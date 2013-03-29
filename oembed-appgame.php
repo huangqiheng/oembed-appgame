@@ -97,19 +97,8 @@ class oEmbedAppgame{
 
 	public function oembed_appgame($api_prefix, $ori_url)
 	{
-		$post_id = get_the_id();
-		if ($meta = get_post_meta($post_id, $this->prefix.$ori_url)) {
-			return $meta[0];
-		} 
+		return $this->get_appgame_oembed_content($api_prefix, $ori_url);
 
-		$html = $this->get_appgame_oembed_content($api_prefix, $ori_url);
-
-		if (empty($html)) {
-			return ;
-		}
-
-		//给其他插件和代码修改自己提供的“最终结果”
-		$html = apply_filters("oembed-appgame-content", $html);
 
 		if ($title && $content && $image) {
 			//保存在“缓存”里
@@ -124,8 +113,22 @@ class oEmbedAppgame{
 
 	function get_appgame_oembed_content($api_prefix, $ori_url)
 	{
+		if ($meta = get_post_meta(get_the_id(), $this->prefix.$ori_url)) {
+			return $meta[0];
+		} 
+
+		$can_save = false;
 		$res_body = $this->get_oembed_from_api ($api_prefix, $ori_url);
-		return $this->make_oembed_template ($res_body, $ori_url);
+		$return = $this->make_oembed_template ($res_body, $ori_url, $can_save);
+
+		if ($can_save) {
+			//保存在“缓存”里
+			update_post_meta($post_id, $this->prefix.$ori_url, $html);
+		} else {
+			//资料不全？需要通知相关人等
+		}
+
+		return $return;
 	}
 
 
@@ -172,7 +175,7 @@ class oEmbedAppgame{
 		return $res_body;
 	}
 
-	public function make_oembed_template ($res_body, $ori_url)
+	public function make_oembed_template ($res_body, $ori_url, &$can_save)
 	{
 		if (empty($res_body)) {
 			return null;
@@ -218,6 +221,8 @@ class oEmbedAppgame{
 		$html .=   "</div>";
 		$html .=   "<div class=\"clearfix\"></div>";
 		$html .= "</div>";
+
+		$can_save = ($image && $title && $content);
 
 		return $html;
 	}

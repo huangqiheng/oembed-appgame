@@ -60,10 +60,17 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 		return $res;
 	}
 
+	$can_save = false;
 	$res_body = get_oembed_from_api ($api_prefix, $ori_url);
-	$return = make_oembed_template ($res_body, $ori_url);
+	$return = make_oembed_template ($res_body, $ori_url, $can_save);
 
-	return put_cache_data($ori_url, $return);
+	if ($can_save) {
+		put_cache_data($ori_url, $return);
+	} else {
+		//资料不全？需要通知相关人等
+	}
+
+	return $return;
 }       
 
 function get_oembed_from_api ($api_prefix, $ori_url)
@@ -109,7 +116,7 @@ function get_oembed_from_api ($api_prefix, $ori_url)
 	return $res_body;
 }
 
-function make_oembed_template ($res_body, $ori_url)
+function make_oembed_template ($res_body, $ori_url, &$can_save)
 {
 	if (empty($res_body)) {
 		return null;
@@ -156,6 +163,8 @@ function make_oembed_template ($res_body, $ori_url)
 	$html .=   "</div>";
 	$html .=   "<div class=\"clearfix\"></div>";
 	$html .= "</div>";
+
+	$can_save = ($image && $title && $content);
 
 	return $html;
 }
