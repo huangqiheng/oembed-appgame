@@ -12,8 +12,6 @@ new oEmbedAppgame();
 
 class oEmbedAppgame{
 
-	//任玩堂的oEmbed的api格式
-	private $api_regex = "%s?oembed=true&format=json&url=%s";
 	private $prefix = '_appgame_';
 
 	//任玩堂链接的正则表达式
@@ -104,29 +102,76 @@ class oEmbedAppgame{
 			return $meta[0];
 		} 
 
-		$hdrsArr = array(); 
-		$hdrsArr['Accept']='application/json,text/javascript,*/*;q=0.01'; 
-		$hdrsArr['Accept-Encoding']='deflate,sdch'; 
-		$hdrsArr['Accept-Language']='zh-CN,zh;q=0.8'; 
-		$hdrsArr['Accept-Charset']='utf-8;q=0.7,*;q=0.3'; 
+		$res_body = $this->get_oembed_from_api ($api_prefix, $ori_url);
 
-		$api_url = sprintf($this->api_regex, $api_prefix, $ori_url);
-		$res = wp_remote_get($api_url, array('timeout'=>10, 'headers'=>$hdrsArr));
-
-		if (is_wp_error($res)) {
-			return ; // nothing to do on error
+		if (empty($res_body)) {
+			return ;
 		}
 
-		if ($res['response']['code'] !== 200) {
-			return ; // nothing to do on error
+		$html = $this->make_oembed_template ($res_body);
+
+		if (empty($html)) {
+			return ;
+		}
+
+		//给其他插件和代码修改自己提供的“最终结果”
+		$html = apply_filters("oembed-appgame-content", $html);
+
+		if ($title && $content && $image) {
+			//保存在“缓存”里
+			update_post_meta($post_id, $this->prefix.$url, $html);
+		} else {
+			//发现有人引用了不全信息的链接，应该通知appgame去补全
+
+		}
+
+		return $html;
+	}
+
+	function get_oembed_from_api ($api_prefix, $ori_url)
+	{
+		//任玩堂的oEmbed的api格式
+		$api_regex = "%s?oembed=true&format=json&url=%s";
+		$api_url = sprintf($api_regex, $api_prefix, $ori_url);
+
+		$headers = array(
+			"Accept: application/json", 
+			"Accept-Encoding: deflate,sdch", 
+			"Accept-Charset: utf-8;q=1"
+			);
+
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $api_url); 
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_HEADER, 0);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+
+		$res = curl_exec($ch);
+		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+		if (curl_errno($ch)){ 
+			curl_close($ch);
+			return null;
+		} 
+
+		curl_close($ch);
+
+		if ($httpcode !== 200) {
+			return null; 
 		}
 
 		preg_match("#{\".*\"}#ui", $res['body'], $mm);
 		$res_body = $mm[0];
+		return $res_body;
+	}
 
+	public function make_oembed_template ($res_body)
+	{
 		$data = json_decode($res_body);
 		if (empty($data)) {
-			return ;
+			return null;
 		}
 
 		$favicon_url = "http://www.appgame.com/favicon.ico";
@@ -136,13 +181,18 @@ class oEmbedAppgame{
 		$title = $data->title;
 		$content = $data->html;
 
+		//截断过长的html内容
 		if (mb_strlen($content) > 255) {
+			//去掉html标签先
 			$content = preg_replace("#<.+?>#siu", "", $content);
+
+			//截取为最大限制长度
 			if (mb_strlen($content) > 255) {
 				$content = mb_substr($content, 0, 255);
 			}
 		}
 
+		//构造html模板
 		$html  = "<div class=\"onebox-result\">";
 		$html .=   "<div class=\"source\">";
 		$html .=     "<div class=\"info\">";
@@ -159,12 +209,6 @@ class oEmbedAppgame{
 		$html .=   "</div>";
 		$html .=   "<div class=\"clearfix\"></div>";
 		$html .= "</div>";
-
-		$html = apply_filters("oembed-appgame-content", $html);
-
-		if ($title && $content) {
-			update_post_meta($post_id, $this->prefix.$url, $html);
-		}
 
 		return $html;
 	}
@@ -194,19 +238,19 @@ class oEmbedAppgame{
 		$comment_text = $wp_embed->autoembed( $comment_text );
 		remove_filter( 'embed_oembed_discover', '__return_false', 999 );
 
-		$comment_text = $this->oembed_comments_appgame( $comment_text );
+		$comment_text = $this->scan_oembed_appgame( $comment_text );
 
 		//error_log('-------------------------');
 		//error_log($comment_text);
 		return $comment_text;
 	}
 
-	public function oembed_comments_appgame( $content ) 
+	public function scan_oembed_appgame( $content ) 
 	{
-		return preg_replace_callback( '|^\s*(https?://[^\s"]+)\s*$|im', array(&$this, 'autoembed_callback'), $content );
+		return preg_replace_callback( '|^\s*(https?://[^\s"]+)\s*$|im', array(&$this, 'oembed_appgame_callback'), $content );
 	}
 
-	public function autoembed_callback( $match ) 
+	public function oembed_appgame_callback( $match ) 
 	{
 		$return = $match[1];
 		foreach ($this->regex_appgame as $value) {
