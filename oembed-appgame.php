@@ -102,13 +102,7 @@ class oEmbedAppgame{
 			return $meta[0];
 		} 
 
-		$res_body = $this->get_oembed_from_api ($api_prefix, $ori_url);
-
-		if (empty($res_body)) {
-			return ;
-		}
-
-		$html = $this->make_oembed_template ($res_body, $ori_url);
+		$html = $this->get_appgame_oembed_content($api_prefix, $ori_url);
 
 		if (empty($html)) {
 			return ;
@@ -128,8 +122,19 @@ class oEmbedAppgame{
 		return $html;
 	}
 
+	function get_appgame_oembed_content($api_prefix, $ori_url)
+	{
+		$res_body = $this->get_oembed_from_api ($api_prefix, $ori_url);
+		return $this->make_oembed_template ($res_body, $ori_url);
+	}
+
+
 	function get_oembed_from_api ($api_prefix, $ori_url)
 	{
+		if (empty($api_prefix) || empty($ori_url)) {
+			return null;
+		}
+
 		//任玩堂的oEmbed的api格式
 		$api_regex = "%s?oembed=true&format=json&url=%s";
 		$api_url = sprintf($api_regex, $api_prefix, $ori_url);
@@ -169,6 +174,10 @@ class oEmbedAppgame{
 
 	public function make_oembed_template ($res_body, $ori_url)
 	{
+		if (empty($res_body)) {
+			return null;
+		}
+
 		$data = json_decode($res_body);
 		if (empty($data)) {
 			return null;
