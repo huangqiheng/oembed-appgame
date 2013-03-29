@@ -108,7 +108,7 @@ class oEmbedAppgame{
 			return ;
 		}
 
-		$html = $this->make_oembed_template ($res_body);
+		$html = $this->make_oembed_template ($res_body, $ori_url);
 
 		if (empty($html)) {
 			return ;
@@ -167,7 +167,7 @@ class oEmbedAppgame{
 		return $res_body;
 	}
 
-	public function make_oembed_template ($res_body)
+	public function make_oembed_template ($res_body, $ori_url)
 	{
 		$data = json_decode($res_body);
 		if (empty($data)) {
