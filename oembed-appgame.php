@@ -98,7 +98,7 @@ class oEmbedAppgame{
 	public function oembed_appgame($api_prefix, $ori_url)
 	{
 		$post_id = get_the_id();
-		if ($meta = get_post_meta($post_id, $this->prefix.$url)) {
+		if ($meta = get_post_meta($post_id, $this->prefix.$ori_url)) {
 			return $meta[0];
 		} 
 
@@ -141,7 +141,7 @@ class oEmbedAppgame{
 			);
 
 		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $api_url); 
+		curl_setopt($ch, CURLOPT_URL, $api_url);
 		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 		curl_setopt($ch, CURLOPT_HEADER, 0);
@@ -150,20 +150,20 @@ class oEmbedAppgame{
 
 		$res = curl_exec($ch);
 		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		if (curl_errno($ch)){ 
-			curl_close($ch);
-			return null;
-		} 
-
+		$err = curl_errno($ch);
 		curl_close($ch);
 
-		if ($httpcode !== 200) {
-			return null; 
+		if (($err) || ($httpcode !== 200)) {
+			return null;
 		}
 
-		preg_match("#{\".*\"}#ui", $res['body'], $mm);
+		preg_match("#{\".*\"}#ui", $res, $mm);
 		$res_body = $mm[0];
+
+		if (empty($res_body)) {
+			return null;
+		}
+
 		return $res_body;
 	}
 
