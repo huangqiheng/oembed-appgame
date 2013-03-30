@@ -136,9 +136,11 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 	$content = $data->html;
 
 	//截断过长的html内容
+        mb_internal_encoding("UTF-8");
+
 	if (mb_strlen($content) > 255) {
 		//去掉html标签先
-		$content = preg_replace("#<.+?>#siu", "", $content);
+		$content = preg_replace("#<.+?>#su", "", $content);
 
 		//截取为最大限制长度
 		if (mb_strlen($content) > 255) {

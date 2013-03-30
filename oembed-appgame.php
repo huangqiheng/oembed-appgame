@@ -8,6 +8,8 @@ Version: 0.0.1
 Author URI: https://github.com/huangqiheng
 */
 
+require_once 'function_oembed.php';
+
 new oEmbedAppgame();
 
 class oEmbedAppgame{
@@ -118,8 +120,8 @@ class oEmbedAppgame{
 		} 
 
 		$can_save = false;
-		$res_body = $this->get_oembed_from_api ($api_prefix, $ori_url);
-		$return = $this->make_oembed_template ($res_body, $ori_url, $can_save);
+		$res_body = get_oembed_from_api ($api_prefix, $ori_url);
+		$return = make_oembed_template ($res_body, $ori_url, $can_save);
 
 		if ($can_save) {
 			//保存在“缓存”里
@@ -129,102 +131,6 @@ class oEmbedAppgame{
 		}
 
 		return $return;
-	}
-
-
-	function get_oembed_from_api ($api_prefix, $ori_url)
-	{
-		if (empty($api_prefix) || empty($ori_url)) {
-			return null;
-		}
-
-		//任玩堂的oEmbed的api格式
-		$api_regex = "%s?oembed=true&format=json&url=%s";
-		$api_url = sprintf($api_regex, $api_prefix, $ori_url);
-
-		$headers = array(
-			"Accept: application/json", 
-			"Accept-Encoding: deflate,sdch", 
-			"Accept-Charset: utf-8;q=1"
-			);
-
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, $api_url);
-		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-		curl_setopt($ch, CURLOPT_HEADER, 0);
-		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-
-		$res = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-		$err = curl_errno($ch);
-		curl_close($ch);
-
-		if (($err) || ($httpcode !== 200)) {
-			return null;
-		}
-
-		preg_match("#{\".*\"}#ui", $res, $mm);
-		$res_body = $mm[0];
-
-		if (empty($res_body)) {
-			return null;
-		}
-
-		return $res_body;
-	}
-
-	public function make_oembed_template ($res_body, $ori_url, &$can_save)
-	{
-		if (empty($res_body)) {
-			return null;
-		}
-
-		$data = json_decode($res_body);
-		if (empty($data)) {
-			return null;
-		}
-
-		$favicon_url = "http://www.appgame.com/favicon.ico";
-		$provider_name = $data->provider_name;
-		$provider_url  = $data->provider_url;
-		$image = $data->thumbnail_url;
-		$title = $data->title;
-		$content = $data->html;
-
-		//截断过长的html内容
-		if (mb_strlen($content) > 255) {
-			//去掉html标签先
-			$content = preg_replace("#<.+?>#siu", "", $content);
-
-			//截取为最大限制长度
-			if (mb_strlen($content) > 255) {
-				$content = mb_substr($content, 0, 255);
-			}
-		}
-
-		//构造html模板
-		$html  = "<div class=\"onebox-result\">";
-		$html .=   "<div class=\"source\">";
-		$html .=     "<div class=\"info\">";
-		$html .=       "<a href=$provider_url target=\"_blank\">";
-		$html .=         "<img class=\"favicon\" src=$favicon_url>$provider_name";
-		$html .=       "</a>";
-		$html .=     "</div>";
-		$html .=   "</div>";
-
-		$html .=   "<div class=\"onebox-result-body\">"; if ($image) {
-		$html .=     "<a href=$ori_url target=\"_blank\"><img src=$image class=\"thumbnail\"></a>";}
-		$html .=     "<h3><a href=$ori_url target=\"_blank\" class=\"onebox-title\">$title</a></h3>";
-		$html .=     $content;
-		$html .=   "</div>";
-		$html .=   "<div class=\"clearfix\"></div>";
-		$html .= "</div>";
-
-		$can_save = ($image && $title && $content);
-
-		return $html;
 	}
 
 
