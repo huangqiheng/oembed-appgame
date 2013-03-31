@@ -1,5 +1,7 @@
 ﻿<?php
 
+require_once 'nokorigi.php';
+
 function process_post_by_display($post) 
 {
 	$post = process_itunes_link($post);
@@ -7,12 +9,30 @@ function process_post_by_display($post)
 	return $post;
 }
 
+//http://bbs.appgame.com/forum.php?mod=redirect&goto=findpost&ptid=41501&pid=253566&fromuid=10434
+//http://bbs.appgame.com/forum.php?mod=viewthread&tid=41536&fromuid=10434
+function process_bbs_appgame_link($post)
+{
+
+}
+
+function get_bbspage_form_url($ori_url, $pid)
+{
+	$html = gzdecode(file_get_contents($ori_url));
+	//<table id="pid256299" summary="pid256299" cellspacing="0" cellpadding="0">
+	$saw = new nokogiri($html);
+
+	var_dump($saw->get("table[@id=pid".$pid."]")->toArray());
+
+
+}
+
 function process_appgame_link($post)
 {
         $regex_appgame = array( 
-                "#<a href=\"((http://([a-zA-Z0-9\-]+\.)*appgame\.com/)((?:archives|app)/)?[\d]+\.html)[\s\S]+</a>#i",
-                "#<a href=\"((http://ol\.appgame\.com/[a-zA-Z0-9\-]+/)((?:archives|app)/)?[\d]+\.html)[\s\S]+</a>#i",
-                "#<a href=\"((http://(www\.)?appgame\.com/zt/[a-zA-Z0-9\-]+/)(.+)?(?:\?p=[\d]+|[\d]+\.html))[\s\S]+</a>#i"
+                "#<a href=\"((http://ol\.appgame\.com/[a-zA-Z0-9\-]+/)([a-zA-Z0-9\-]+/)*?[\d]+\.html)[\s\S]+?</a>#i",
+                "#<a href=\"((http://(www\.)?appgame\.com/zt/[a-zA-Z0-9\-]+/)(.+)?(?:\?p=[\d]+|[\d]+\.html))[\s\S]+?</a>#i",
+                "#<a href=\"((http://([a-zA-Z0-9\-]+\.)*appgame\.com/)((?:archives|app)/)?[\d]+\.html)[\s\S]+?</a>#i"
                 );
 
 	return preg_replace_callback( $regex_appgame, 'oembed_appgame_callback', $post);
@@ -116,6 +136,26 @@ function get_oembed_from_api ($api_prefix, $ori_url)
 	return $res_body;
 }
 
+function remove_html_tag($content)
+{
+	$ori_content = $content;
+
+	//去掉html标签先
+	$ori_content = preg_replace("#<([^<>].*|(?R))*>#", "", $ori_content);
+
+	if (empty($ori_content)) {
+		$content = preg_replace("#<.*>#", "", $content);
+	} else {
+		$content = $ori_content;
+	}
+
+	//截取为最大限制长度
+	if (mb_strlen($content) > 255) {
+		$content = mb_substr($content, 0, 255);
+	}
+	return $content;
+}
+
 function make_oembed_template ($res_body, $ori_url, &$can_save)
 {
 	if (empty($res_body)) {
@@ -139,13 +179,7 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
         mb_internal_encoding("UTF-8");
 
 	if (mb_strlen($content) > 255) {
-		//去掉html标签先
-		$content = preg_replace("#<.+?>#su", "", $content);
-
-		//截取为最大限制长度
-		if (mb_strlen($content) > 255) {
-			$content = mb_substr($content, 0, 255);
-		}
+		$content = remove_html_tag($content);
 	}
 
 	//构造html模板

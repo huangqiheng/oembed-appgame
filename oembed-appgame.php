@@ -18,13 +18,19 @@ class oEmbedAppgame{
 
 	//任玩堂链接的正则表达式
 	private $regex_appgame = array( 
-		'main_msite'=> "#(http://([a-zA-Z0-9\-]+\.)*appgame\.com/)((?:archives|app)/)?[\d]+\.html$#i",
-		'ol_msite'=>   "#(http://ol\.appgame\.com/[a-zA-Z0-9\-]+/)((?:archives|app)/)?[\d]+\.html#i",
-		'zt_msite'=>   "#(http://(www\.)?appgame\.com/zt/[a-zA-Z0-9\-]+/)(.+)?(?:\?p=[\d]+|[\d]+\.html)#i"
+		'ol_msite'=>   "#(http://ol\.appgame\.com/[a-zA-Z0-9\-]+/)([a-zA-Z0-9\-]+/)*?[\d]+\.html$#i",
+		'zt_msite'=>   "#(http://(www\.)?appgame\.com/zt/[a-zA-Z0-9\-]+/)(.+)?(?:\?p=[\d]+|[\d]+\.html)#i",
+		'main_msite'=> "#(http://([a-zA-Z0-9\-]+\.)*appgame\.com/)((?:archives|app)/)?[\d]+\.html$#i"
 		);
 
 	//itunes链接的正则表达式
 	private $regex_itunes = "#https?://itunes.apple.com(\S*)/app\S*/id(\d+)(\?mt=\d+){0,1}[\s\S]+#i";
+
+	//bbs.appgame连接的正则表达式
+	private $regex_bbs = array(
+		'thread-pid'=> "#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i",
+		'thread-url'=> "#http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html#i"
+		);
 
 	/*----------------------------------------------------------------------
 		初始化代码
@@ -53,6 +59,11 @@ class oEmbedAppgame{
 
 		//注册itunes链接在文章内的embed
 		wp_embed_register_handler('embed_itunes', $this->regex_itunes,array(&$this, 'embed_itunes_handler'));
+
+		//注册bbs.appgame.com网站的embed
+		foreach ($this->regex_bbs as $key=>$value) {
+			wp_embed_register_handler($key, $value,array(&$this, 'oembed_bbs_appgame_handler'));
+		}
 	}
 
 	public function on_page_initial() 
@@ -87,6 +98,24 @@ class oEmbedAppgame{
 	}
 
 	/*----------------------------------------------------------------------
+		处理bbs.appgame.com的链接
+	---------------------------------------------------------------------*/
+
+	public function oembed_bbs_appgame_handler($match, $attr, $url, $rattr)
+	{
+		$ori_url =  $match[0];
+		$pid = null;
+
+		//#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i,
+		if ($match[1] == 'redirect') {
+			$pid = $match[3];
+		}
+
+		$return = get_bbspage_form_url($ori_url, $pid);
+
+		return $return;
+	}
+	/*----------------------------------------------------------------------
 		处理*.appgame.com的链接
 	---------------------------------------------------------------------*/
 
@@ -94,27 +123,7 @@ class oEmbedAppgame{
 	{
 		$ori_url =  $match[0];
 		$api_prefix = $match[1];
-		return $this->oembed_appgame($api_prefix, $ori_url);
-	}
 
-	public function oembed_appgame($api_prefix, $ori_url)
-	{
-		return $this->get_appgame_oembed_content($api_prefix, $ori_url);
-
-
-		if ($title && $content && $image) {
-			//保存在“缓存”里
-			update_post_meta($post_id, $this->prefix.$url, $html);
-		} else {
-			//发现有人引用了不全信息的链接，应该通知appgame去补全
-
-		}
-
-		return $html;
-	}
-
-	function get_appgame_oembed_content($api_prefix, $ori_url)
-	{
 		if ($meta = get_post_meta(get_the_id(), $this->prefix.$ori_url)) {
 			return $meta[0];
 		} 
