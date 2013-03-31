@@ -1,6 +1,6 @@
 ﻿<?php
 
-require_once 'nokorigi.php';
+require_once 'nokogiri.php';
 
 function process_post_by_display($post) 
 {
@@ -9,7 +9,7 @@ function process_post_by_display($post)
 	return $post;
 }
 
-//http://bbs.appgame.com/forum.php?mod=redirect&goto=findpost&ptid=41501&pid=253566&fromuid=10434
+//http://bbs.appgame.com/forum.php?mod=redirect&goto=findpost&ptid=41501&pid=253566
 //http://bbs.appgame.com/forum.php?mod=viewthread&tid=41536&fromuid=10434
 function process_bbs_appgame_link($post)
 {
@@ -18,13 +18,17 @@ function process_bbs_appgame_link($post)
 
 function get_bbspage_form_url($ori_url, $pid)
 {
-	$html = gzdecode(file_get_contents($ori_url));
+	$html = do_curl($ori_url);
 	//<table id="pid256299" summary="pid256299" cellspacing="0" cellpadding="0">
+
 	$saw = new nokogiri($html);
 
-	var_dump($saw->get("table[@id=pid".$pid."]")->toArray());
-
-
+	$id = "pid".$pid;
+	$return = $saw->get("table[id=$id]")->toHTML();
+	
+	//print_r($return[0]);
+	
+	return $return[0];
 }
 
 function process_appgame_link($post)
@@ -93,6 +97,35 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 	return $return;
 }       
 
+function do_curl($url)
+{
+	$headers = array(
+			"Accept: application/json",
+			"Accept-Encoding: deflate,sdch",
+			"Accept-Charset: utf-8;q=1"
+			);
+
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, $url);
+	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_HEADER, 0);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+
+	$res = curl_exec($ch);
+	$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+	$err = curl_errno($ch);
+	curl_close($ch);
+
+	if (($err) || ($httpcode !== 200)) {
+		return null;
+	}
+
+	return $res;
+}
+
 function get_oembed_from_api ($api_prefix, $ori_url)
 {
 	if (empty($api_prefix) || empty($ori_url)) {
@@ -103,26 +136,9 @@ function get_oembed_from_api ($api_prefix, $ori_url)
 	$api_regex = "%s?oembed=true&format=json&url=%s";
 	$api_url = sprintf($api_regex, $api_prefix, $ori_url);
 
-	$headers = array(
-			"Accept: application/json",
-			"Accept-Encoding: deflate,sdch",
-			"Accept-Charset: utf-8;q=1"
-			);
+	$res = do_curl($api_url);
 
-	$ch = curl_init();
-	curl_setopt($ch, CURLOPT_URL, $api_url);
-	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-	curl_setopt($ch, CURLOPT_HEADER, 0);
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
-	curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-
-	$res = curl_exec($ch);
-	$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-	$err = curl_errno($ch);
-	curl_close($ch);
-
-	if (($err) || ($httpcode !== 200)) {
+	if (empty($res)) {
 		return null;
 	}
 
