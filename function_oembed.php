@@ -12,8 +12,8 @@ function process_post_by_display($post)
 function process_bbs_appgame_link($post)
 {
 	$regex_bbs = array(
-		'thread-pid'=> "#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i",
-		'thread-url'=> "#http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html#i"
+		"#<a href=\"http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)[\s\S]+?</a>#i",
+		"#<a href=\"http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html[\s\S]+?</a>#i"
 		);
 
 	return preg_replace_callback( $regex_bbs, 'embed_bbs_appgame_callback', $post);
