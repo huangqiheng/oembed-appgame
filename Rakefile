@@ -36,6 +36,7 @@ def install_plugin name
 
 	config = YAML.load_file 'oembed-appgame.yml'
 	alpha = config[name]
+	chown = config['chown']
 	install_baton = true 
 
 	alpha.each do |dist_path|
@@ -43,6 +44,7 @@ def install_plugin name
 			puts("当前程序目录是：#{my_path}") if install_baton
 			puts "安装程序到：#{dist_path}"
 			FileUtils.cp_r(my_path, dist_path)
+			FileUtils.chown_R chown['user'], chown['group'], dist_path
 			install_baton = false
 		end
 	end
