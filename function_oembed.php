@@ -2,8 +2,20 @@
 
 require_once 'nokogiri.php';
 
+function fast_by_pass($post)
+{
+	if (preg_match( "#<a href=\"https?://#s", $post)) {
+		return false;
+	}
+	return true;
+}
+
 function process_post_by_display($post) 
 {
+	if (fast_by_pass($post)) {
+		return $post;
+	}
+
 	$post = process_itunes_link($post);
 	$post = process_appgame_link($post);
 	$post = process_bbs_appgame_link($post);
