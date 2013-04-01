@@ -6,15 +6,17 @@ function process_post_by_display($post)
 {
 	$post = process_itunes_link($post);
 	$post = process_appgame_link($post);
+	$post = process_bbs_appgame_link($post);
 	return $post;
 }
 
 function process_bbs_appgame_link($post)
 {
 	$regex_bbs = array(
-		"#<a href=\"http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)[\s\S]+?</a>#i",
-		"#<a href=\"http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)&fromuid=[\d]+[\s\S]+?</a>#i",
-		"#<a href=\"http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html[\s\S]+?</a>#i"
+		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+))\"[\s\S]+?</a>#i",
+		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+)&amp;fromuid=(\d+))\"[\s\S]+?</a>#i",
+		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(viewthread)&amp;tid=(\d+)&amp;fromuid=(\d+))\"[\s\S]+?</a>#i",
+		"#<a href=\"(http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html)\"[\s\S]+?</a>#i"
 		);
 
 	return preg_replace_callback( $regex_bbs, 'embed_bbs_appgame_callback', $post);
@@ -22,14 +24,25 @@ function process_bbs_appgame_link($post)
 
 function embed_bbs_appgame_callback( $match )
 {
-	$ori_url =  $match[0];
-	$pid = null;
+	$ori_url =  $match[1];
+	$ori_url = preg_replace("#amp;#", "", $ori_url);
 
-	if ($match[1] == 'redirect') {
-		$pid = $match[3];
+	if ($res = get_cache_data($ori_url)) {
+		return $res;
 	}
 
+	$pid = null;
+	if ($match[2] == 'redirect') {
+		$pid = $match[4];
+	} 
+
 	$return = get_bbspage_form_url($ori_url, $pid);
+
+	if ($return) {
+		put_cache_data($ori_url, $return);
+	} else {
+		//错误？需要通知相关人等
+	}
 
 	return $return;
 }
@@ -37,6 +50,10 @@ function embed_bbs_appgame_callback( $match )
 function get_bbspage_form_url($ori_url, $pid)
 {
 	$html = do_curl($ori_url);
+
+	if (empty($html)) {
+		return null;
+	}
 
 	if (empty($pid)) {
 		if (!preg_match( "#<table id=\"pid(\d+)\" summary=\"pid(\d+)\"#s", $html, $match)) {
@@ -49,11 +66,14 @@ function get_bbspage_form_url($ori_url, $pid)
 	$saw = new nokogiri($html);
 
 	$id = "pid".$pid;
-	$return = $saw->get("table[id=$id]")->toHTML();
+	$result = $saw->get("table[id=$id]")->toHTML();
+
+	$html  = "<div class=\"onebox-result\">";
+	$html .= $result[0];
+	$html .= "<a href=$ori_url target=\"_blank\">".$ori_url."</a>";
+	$html .= "</div>";
 	
-	//print_r($return[0]);
-	
-	return $return[0];
+	return $html;
 }
 
 function process_appgame_link($post)
