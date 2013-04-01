@@ -9,18 +9,42 @@ function process_post_by_display($post)
 	return $post;
 }
 
-//http://bbs.appgame.com/forum.php?mod=redirect&goto=findpost&ptid=41501&pid=253566
-//http://bbs.appgame.com/forum.php?mod=viewthread&tid=41536&fromuid=10434
 function process_bbs_appgame_link($post)
 {
+	$regex_bbs = array(
+		'thread-pid'=> "#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i",
+		'thread-url'=> "#http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html#i"
+		);
 
+	return preg_replace_callback( $regex_bbs, 'embed_bbs_appgame_callback', $post);
+}
+
+function embed_bbs_appgame_callback( $match )
+{
+	$ori_url =  $match[0];
+	$pid = null;
+
+	if ($match[1] == 'redirect') {
+		$pid = $match[3];
+	}
+
+	$return = get_bbspage_form_url($ori_url, $pid);
+
+	return $return;
 }
 
 function get_bbspage_form_url($ori_url, $pid)
 {
 	$html = do_curl($ori_url);
-	//<table id="pid256299" summary="pid256299" cellspacing="0" cellpadding="0">
 
+	if (empty($pid)) {
+		if (!preg_match( "#<table id=\"pid(\d+)\" summary=\"pid(\d+)\"#s", $html, $match)) {
+			return null;
+		}
+		$pid = $match[1];
+	}
+
+	//<table id="pid256299" summary="pid256299" cellspacing="0" cellpadding="0">
 	$saw = new nokogiri($html);
 
 	$id = "pid".$pid;
