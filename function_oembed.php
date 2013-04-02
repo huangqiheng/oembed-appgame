@@ -16,8 +16,6 @@ function process_post_by_display($post)
 		return $post;
 	}
 
-	return $post;
-
 	$post = process_itunes_link($post);
 	$post = process_appgame_link($post);
 	$post = process_bbs_appgame_link($post);
