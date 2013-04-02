@@ -68,21 +68,22 @@ function get_bbspage_form_url($ori_url, $pid)
 	}
 
 	if (empty($pid)) {
-		if (!preg_match( "#<table id=\"pid(\d+)\" summary=\"pid(\d+)\"#s", $html, $match)) {
+		if (!preg_match( "#<div id=\"post_(\d+)\" class=\"vb vc\">#s", $html, $match)) {
 			return null;
 		}
 		$pid = $match[1];
 	}
 
-	//<table id="pid256299" summary="pid256299" cellspacing="0" cellpadding="0">
+	//phone: <div id="post_255236" class="vb vc">
+
 	$saw = new nokogiri($html);
 
-	$id = "pid".$pid;
-	$result = $saw->get("table[id=$id]")->toHTML();
+	$id = "post_".$pid;
+	$result = $saw->get("div[id=$id]")->toHTML();
 
 	$html  = "<div class=\"onebox-result\">";
 	$html .= $result[0];
-	$html .= "<a href=$ori_url target=\"_blank\">".$ori_url."</a>";
+	$html .= "<a href=$ori_url target=\"_blank\">原始地址</a>";
 	$html .= "</div>";
 	
 	return $html;
@@ -157,10 +158,11 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 function do_curl($url)
 {
 	$headers = array(
-			"Accept: application/json",
-			"Accept-Encoding: deflate,sdch",
-			"Accept-Charset: utf-8;q=1"
-			);
+		"User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
+		"Accept: application/json",
+		"Accept-Encoding: deflate,sdch",
+		"Accept-Charset: utf-8;q=1"
+		);
 
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);

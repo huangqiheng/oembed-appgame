@@ -29,6 +29,8 @@ class oEmbedAppgame{
 	//bbs.appgame连接的正则表达式
 	private $regex_bbs = array(
 		'thread-pid'=> "#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i",
+		'thread-pid1'=>"#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)&fromuid=(\d+)#i",
+		'thread-url1'=>"#http://bbs\.appgame\.com/forum\.php\?mod=(viewthread)&tid=(\d+)&fromuid=(\d+)#i",
 		'thread-url'=> "#http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html#i"
 		);
 
@@ -104,9 +106,8 @@ class oEmbedAppgame{
 	public function oembed_bbs_appgame_handler($match, $attr, $url, $rattr)
 	{
 		$ori_url =  $match[0];
-		$pid = null;
 
-		//#http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&goto=findpost&ptid=(\d+)&pid=(\d+)#i,
+		$pid = null;
 		if ($match[1] == 'redirect') {
 			$pid = $match[3];
 		}

@@ -25,8 +25,8 @@ end_of_string
 	puts '请修改oembed-appgame.yml文件，指定插件的安装目录'
 end
 
-desc '更新本源代码，从github中。'
-task :update do
+desc '从github中，更新本源代码。'
+task :pull do
 	system 'git reset --hard HEAD'
 	system 'git pull'
 end
@@ -64,3 +64,7 @@ desc '默认就是alpha测试操作。'
 task :default do
 	Rake::Task['alpha'].invoke
 end
+
+desc '从github中，更新本源代码，并且执行install安装过程。'
+task :update => [:pull, :install]
+
