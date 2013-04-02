@@ -16,6 +16,8 @@ function process_post_by_display($post)
 		return $post;
 	}
 
+	return $post;
+
 	$post = process_itunes_link($post);
 	$post = process_appgame_link($post);
 	$post = process_bbs_appgame_link($post);
@@ -41,8 +43,8 @@ function is_mobile()
 
 function get_savename($ori_url)
 {
-	if (is_mobile() {
-		return $ori_url.'_mobile';
+	if (is_mobile()) {
+		return ($ori_url.'_mobile');
 	} else {
 		return $ori_url;
 	}
@@ -91,7 +93,7 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 	if (empty($pid)) {
 		if ($mobile) {
-			$regex_match = "#<div id=\"post_(\d+)\" class=\"vb vc\">#s";
+			$regex_match = "#<div id=\"post_(\d+)\" class=\"vb (vc|notb)\">#s";
 		} else {
 			$regex_match = "#<table id=\"pid(\d+)\" summary=\"pid(\d+)\"#s";
 		}
@@ -157,6 +159,10 @@ function get_cache_data($ori_url)
 
 function put_cache_data($ori_url, $data)
 {
+	if (empty($data) || empty($ori_url)) {
+		return null;
+	}
+
 	$appfile = get_cache_file_name($ori_url);
 
 	$fhandler = fopen($appfile, 'a');
