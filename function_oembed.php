@@ -108,6 +108,9 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 		$id_nokorigi = 'table[id=pid'.$pid.']';
 	}
 
+	preg_match("#id=\"thread_subject\">([^<]*?)</a>#", $html, $match);
+	$title = $match[1];
+
 	$saw = new nokogiri($html);
 	$target = $saw->get($id_nokorigi);
 
@@ -117,19 +120,21 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$node = $dom->firstChild->childNodes->item(0); 
 	$content = node_to_html($node);
 
-	$html  = get_onebox_head($pid);
+	$html  = get_onebox_head($pid, 350);
+	$html .= "<a href=$ori_url target=\"_blank\">原始地址：$title</a>";
 	$html .= $content;
-	$html .= "<a href=$ori_url target=\"_blank\">原始地址</a>";
 	$html .= "</div>";
+
+	$html = preg_replace("#<p>签到天数.*?</p>#us", "", $html);
+	$html = preg_replace("#<p>\[LV\..*?</p>#us", "", $html);
 	
 	return $html;
 }
 
-function get_onebox_head($pid)
+function get_onebox_head($pid, $size)
 {
-	$size = 350;
 	$thecon = 'thecon'.$pid;
-	return "<div class=\"onebox-result\" id=$thecon style=\"height: $size; overflow-y: hidden;\">";
+	return "<div class=\"onebox-result\" id=$thecon style=\"height: ".$size."px; overflow-y: hidden;\">";
 }
 
 function remove_doc_class($doc, $class_names)
