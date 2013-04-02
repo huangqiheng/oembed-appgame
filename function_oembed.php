@@ -109,14 +109,74 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	}
 
 	$saw = new nokogiri($html);
-	$result = $saw->get($id_nokorigi)->toHTML();
+	$target = $saw->get($id_nokorigi);
 
-	$html  = "<div class=\"onebox-result\">";
-	$html .= $result[0];
+	$dom = $target->getDom();
+	remove_doc_class($dom, 'plm mbm cl md_ctrl pattl');
+
+	$node = $dom->firstChild->childNodes->item(0); 
+	$content = node_to_html($node);
+
+	$html  = get_onebox_head($pid);
+	$html .= $content;
 	$html .= "<a href=$ori_url target=\"_blank\">原始地址</a>";
 	$html .= "</div>";
 	
 	return $html;
+}
+
+function get_onebox_head($pid)
+{
+	$size = 350;
+	$thecon = 'thecon'.$pid;
+	return "<div class=\"onebox-result\" id=$thecon style=\"height: $size; overflow-y: hidden;\">";
+}
+
+function remove_doc_class($doc, $class_names)
+{
+	$matched = get_elements_by_classname($doc, $class_names);
+
+	foreach($matched as $node) {
+		$node->parentNode->removeChild($node);
+	}
+}
+
+function get_elements_by_classname(DOMDocument $document, $class_names)
+{
+	$elements = $document->getElementsByTagName("*");
+	$matched = array();
+
+	foreach($elements as $node)
+	{
+		if( ! $node->hasAttributes())
+			continue;
+
+		$classAttribute = $node->attributes->getNamedItem('class');
+
+		if( ! $classAttribute)
+			continue;
+
+		$classes = explode(' ', $classAttribute->nodeValue);
+		$__class_names = explode(' ', $class_names);
+
+		foreach($__class_names as $class_name)
+		{
+			if(in_array($class_name, $classes))
+			{
+				$matched[] = $node;
+				break;
+			}
+		}
+	}
+
+	return $matched;
+}
+
+function node_to_html($node)
+{
+	$doc = new DOMDocument();
+	$doc->appendChild($doc->importNode($node,true));
+	return mb_convert_encoding($doc->saveHTML(),'UTF-8','HTML-ENTITIES');
 }
 
 function process_appgame_link($post)
