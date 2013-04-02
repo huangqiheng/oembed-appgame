@@ -34,12 +34,28 @@ function process_bbs_appgame_link($post)
 	return preg_replace_callback( $regex_bbs, 'embed_bbs_appgame_callback', $post);
 }
 
+function is_mobile() 
+{
+	return ($_GET['ordertype'] == 2);
+}
+
+function get_savename($ori_url)
+{
+	if (is_mobile() {
+		return $ori_url.'_mobile';
+	} else {
+		return $ori_url;
+	}
+}
+
 function embed_bbs_appgame_callback( $match )
 {
 	$ori_url =  $match[1];
 	$ori_url = preg_replace("#amp;#", "", $ori_url);
 
-	if ($res = get_cache_data($ori_url)) {
+	$save_name = get_savename($ori_url);
+
+	if ($res = get_cache_data($save_name)) {
 		return $res;
 	}
 
@@ -48,10 +64,11 @@ function embed_bbs_appgame_callback( $match )
 		$pid = $match[4];
 	} 
 
-	$return = get_bbspage_form_url($ori_url, $pid);
+	$mobile = is_mobile();
+	$return = get_bbspage_form_url($ori_url, $pid, $mobile);
 
 	if ($return) {
-		put_cache_data($ori_url, $return);
+		put_cache_data($save_name, $return);
 	} else {
 		//错误？需要通知相关人等
 	}
@@ -59,27 +76,40 @@ function embed_bbs_appgame_callback( $match )
 	return $return;
 }
 
-function get_bbspage_form_url($ori_url, $pid)
+function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 {
-	$html = do_curl($ori_url);
+	$user_agent = null;
+	if ($mobile) {
+		$user_agent = 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3';
+	}
+
+	$html = do_curl($ori_url, $user_agent);
 
 	if (empty($html)) {
 		return null;
 	}
 
 	if (empty($pid)) {
-		if (!preg_match( "#<div id=\"post_(\d+)\" class=\"vb vc\">#s", $html, $match)) {
+		if ($mobile) {
+			$regex_match = "#<div id=\"post_(\d+)\" class=\"vb vc\">#s";
+		} else {
+			$regex_match = "#<table id=\"pid(\d+)\" summary=\"pid(\d+)\"#s";
+		}
+
+		if (!preg_match($regex_match, $html, $match)) {
 			return null;
 		}
 		$pid = $match[1];
 	}
 
-	//phone: <div id="post_255236" class="vb vc">
+	if ($mobile) {
+		$id_nokorigi = 'div[id=post_'.$pid.']';
+	} else {
+		$id_nokorigi = 'table[id=pid'.$pid.']';
+	}
 
 	$saw = new nokogiri($html);
-
-	$id = "post_".$pid;
-	$result = $saw->get("div[id=$id]")->toHTML();
+	$result = $saw->get($id_nokorigi)->toHTML();
 
 	$html  = "<div class=\"onebox-result\">";
 	$html .= $result[0];
@@ -155,14 +185,17 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 	return $return;
 }       
 
-function do_curl($url)
+function do_curl($url, $user_agent=null)
 {
 	$headers = array(
-		"User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3",
 		"Accept: application/json",
 		"Accept-Encoding: deflate,sdch",
 		"Accept-Charset: utf-8;q=1"
 		);
+
+	if ($user_agent) {
+		$headers[] = $user_agent;
+	}
 
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
