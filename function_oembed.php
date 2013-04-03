@@ -2,6 +2,8 @@
 
 require_once 'nokogiri.php';
 
+define('ERROR_NAME', '_ERROR');
+
 function fast_by_pass($post)
 {
 	if (preg_match( "#<a href=\"https?://#s", $post)) {
@@ -59,6 +61,10 @@ function embed_bbs_appgame_callback( $match )
 		return $res;
 	}
 
+	if ($res = get_cache_data($save_name.ERROR_NAME)) {
+		return $res;
+	}
+
 	$pid = null;
 	if ($match[2] == 'redirect') {
 		$pid = $match[4];
@@ -69,8 +75,11 @@ function embed_bbs_appgame_callback( $match )
 
 	if ($return) {
 		put_cache_data($save_name, $return);
+		error_log('new done: '.$ori_url);
 	} else {
 		//错误？需要通知相关人等
+		put_cache_data($save_name.ERROR_NAME, $return);
+		error_log('not done: '.$ori_url);
 	}
 
 	return $return;
@@ -207,10 +216,10 @@ function oembed_appgame_callback( $match )
 	return get_appgame_oembed_content($api_prefix, $ori_url);
 }
 
-function get_cache_file_name($ori_url)
+function get_cache_file_name($key)
 {
 	$search = array(':','.',',',';','/','|','?','&','#','@','!','+','=');
-	$url_file = str_replace($search, '-', $ori_url);
+	$url_file = str_replace($search, '-', $key);
 	return "app/cache-".$url_file.".txt";
 }
 
@@ -225,13 +234,13 @@ function get_cache_data($ori_url)
 	return file_get_contents($appfile);
 }
 
-function put_cache_data($ori_url, $data)
+function put_cache_data($key, $data)
 {
-	if (empty($data) || empty($ori_url)) {
+	if (empty($data) || empty($key)) {
 		return null;
 	}
 
-	$appfile = get_cache_file_name($ori_url);
+	$appfile = get_cache_file_name($key);
 
 	$fhandler = fopen($appfile, 'a');
 	if ($fhandler && fwrite($fhandler, trim($data))) {
@@ -246,14 +255,21 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 		return $res;
 	}
 
+	if ($res = get_cache_data($ori_url.ERROR_NAME)) {
+		return $res;
+	}
+
 	$can_save = false;
 	$res_body = get_oembed_from_api ($api_prefix, $ori_url);
 	$return = make_oembed_template ($res_body, $ori_url, $can_save);
 
 	if ($can_save) {
 		put_cache_data($ori_url, $return);
+		error_log('new done: '.$ori_url);
 	} else {
+		put_cache_data($ori_url.ERROR_NAME, $return);
 		//资料不全？需要通知相关人等
+		error_log('not done: '.$ori_url);
 	}
 
 	return $return;
