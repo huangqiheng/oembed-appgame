@@ -17,12 +17,17 @@ alpha:
 chown:
   user: www-data
   group: www-data
+
+discuz:
+  login_url: 'http://bbs.appgame.com/logging.php?action=login'
+  username: admin
+  password: 123456
 end_of_string
 
-	File.open('oembed-appgame.yml', 'w') do |file|
+	File.open('config.yml', 'w') do |file|
 		file.write yml_str
 	end
-	puts '请修改oembed-appgame.yml文件，指定插件的安装目录'
+	puts '请修改config.yml文件，指定插件的安装目录'
 end
 
 desc '从github中，更新本源代码。'
@@ -34,7 +39,7 @@ end
 def install_plugin name
 	my_path = File.dirname(__FILE__)
 
-	config = YAML.load_file 'oembed-appgame.yml'
+	config = YAML.load_file 'config.yml'
 	alpha = config[name]
 	chown = config['chown']
 	install_baton = true 

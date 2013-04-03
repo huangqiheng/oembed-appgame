@@ -52,7 +52,7 @@ function embed_bbs_appgame_callback( $match )
 {
 	$ori_url =  $match[1];
 	$ori_url = preg_replace("#amp;#", "", $ori_url);
-
+	
 	$save_name = get_savename($ori_url);
 
 	if ($res = get_cache_data($save_name)) {
@@ -104,12 +104,17 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 	if ($mobile) {
 		$id_nokorigi = 'div[id=post_'.$pid.']';
+
+		preg_match("#<title>([^<]*?)</title>#", $html, $match);
+		$title = $match[1];
 	} else {
 		$id_nokorigi = 'table[id=pid'.$pid.']';
+
+		preg_match("#id=\"thread_subject\">([^<]*?)</a>#", $html, $match);
+		$title = $match[1];
 	}
 
-	preg_match("#id=\"thread_subject\">([^<]*?)</a>#", $html, $match);
-	$title = $match[1];
+	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
 
 	$saw = new nokogiri($html);
 	$target = $saw->get($id_nokorigi);
@@ -271,9 +276,9 @@ function do_curl($url, $user_agent=null)
 	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($ch, CURLOPT_HEADER, 0);
-	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
 	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-	curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 
 	$res = curl_exec($ch);
 	$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
