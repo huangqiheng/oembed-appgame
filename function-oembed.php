@@ -156,23 +156,20 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$node = $dom->firstChild->childNodes->item(0); 
 	$content = node_to_html($node);
 
-	//这1行应该是不需要了，测试测试再算
-	//$content = remove_bbs_appgame_link($content);
-	$content = preg_replace_callback("#<img[^>]*?>#us", 'cut_images_but', $content);
-
-	if ($mobile) {
-		$html = $content;
-	} else {
-		$html = "<a href=$ori_url target=\"_blank\">原始地址：$title</a>"; 
-		$html .= $content;
-	}
-
+	$html = ($mobile)? $content : "<a href=$ori_url target=\"_blank\">原始地址：$title</a>".$content;
 	$html = onebox_capsule($pid, $html, 185);
 
+	return remove_trouble_tags($html);
+}
+
+function remove_trouble_tags($html)
+{
+	$html = preg_replace_callback("#<img[^>]*?>#us", 'cut_images_but', $html);
 	$html = preg_replace("#<p>签到天数.*?</p>#us", "", $html);
 	$html = preg_replace("#<p>\[LV\..*?</p>#us", "", $html);
 	$html = preg_replace("#(<br>)+#us", "", $html);
 	$html = preg_replace("#<i class=\"pstatus\">.*?</i>#us", "", $html);
+	$html = preg_replace("#<script.*?</script>#us", "", $html);
 	return $html;
 }
 
@@ -191,7 +188,7 @@ function onebox_capsule($pid, $content, $size=180)
 {
 	$html = get_onebox_head($pid, $size); 	
 	$html .= $content;
-	$html .= "</div>";
+	$html .= "</div><!--onebox-end-->";
 	return $html;
 }
 
