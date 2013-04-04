@@ -22,12 +22,22 @@ discuz:
   login_url: 'http://bbs.appgame.com/logging.php?action=login'
   username: admin
   password: 123456
+
+error_log:
+  tail: '/var/log/fpm-php.bbs.log'
 end_of_string
 
 	File.open('config.yml', 'w') do |file|
 		file.write yml_str
 	end
 	puts '请修改config.yml文件，指定插件的安装目录'
+end
+
+desc '查看error_log日志，使用tail -f命令'
+task :log do
+	config = YAML.load_file 'config.yml'
+	err_path = config['error_log']
+	system "tail -f '#{err_path['tail']}'"
 end
 
 desc '从github中，更新本源代码。'
@@ -65,9 +75,9 @@ task :alpha do
 	install_plugin 'alpha'
 end
 
-desc '默认就是alpha测试操作。'
+desc '默认就是rake log测试操作。'
 task :default do
-	Rake::Task['alpha'].invoke
+	Rake::Task['log'].invoke
 end
 
 desc '从github中，更新本源代码，并且执行install安装过程。'

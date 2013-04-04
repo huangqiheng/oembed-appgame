@@ -9,6 +9,7 @@ Author URI: https://github.com/huangqiheng
 */
 
 require_once 'function_oembed.php';
+require_once 'post-meta-cache.php';
 
 new oEmbedAppgame();
 
@@ -125,22 +126,15 @@ class oEmbedAppgame{
 		$ori_url =  $match[0];
 		$api_prefix = $match[1];
 
-		if ($meta = get_post_meta(get_the_id(), $this->prefix.$ori_url)) {
-			return $meta[0];
+		if ($content = get_post_cache($ori_url)) {
+			return $content;
 		} 
 
 		$can_save = false;
 		$res_body = get_oembed_from_api ($api_prefix, $ori_url);
 		$return = make_oembed_template ($res_body, $ori_url, $can_save);
 
-		if ($can_save) {
-			//保存在“缓存”里
-			update_post_meta($post_id, $this->prefix.$ori_url, $html);
-		} else {
-			//资料不全？需要通知相关人等
-		}
-
-		return $return;
+		return set_post_cache($ori_url, $return);
 	}
 
 

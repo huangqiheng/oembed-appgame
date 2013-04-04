@@ -3,6 +3,7 @@
 require_once 'nokogiri.php';
 
 define('ERROR_NAME', '_ERROR');
+define('UA_ONEBOX', 'curl-onebox');
 
 function fast_by_pass($post)
 {
@@ -14,8 +15,15 @@ function fast_by_pass($post)
 
 function process_post_by_display($post) 
 {
+	//里面没有链接的，bypass
 	if (fast_by_pass($post)) {
 		return $post;
+	}
+
+	//这个请求是来自本代码curl发出的，bypass
+	$user_agent = $_SERVER['HTTP_USER_AGENT'];
+	if (strpos($user_agent, UA_ONEBOX) !== false) {
+		return remove_bbs_appgame_link($post);
 	}
 
 	$post = process_itunes_link($post);
@@ -24,16 +32,23 @@ function process_post_by_display($post)
 	return $post;
 }
 
+$regex_bbs = array(
+	"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+))\"[\s\S]+?</a>#us",
+	"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+)&amp;fromuid=(\d+))\"[\s\S]+?</a>#us",
+	"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(viewthread)&amp;tid=(\d+)&amp;fromuid=\d+?)\"[\s\S]+?</a>#us",
+	"#<a href=\"(http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html)\"[\s\S]+?</a>#us"
+	);
+
+function remove_bbs_appgame_link($post)
+{
+	global $regex_bbs;
+	return preg_replace($regex_bbs, "", $post);
+}
+
 function process_bbs_appgame_link($post)
 {
-	$regex_bbs = array(
-		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+))\"[\s\S]+?</a>#i",
-		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(redirect)&amp;goto=findpost&amp;ptid=(\d+)&amp;pid=(\d+)&amp;fromuid=(\d+))\"[\s\S]+?</a>#i",
-		"#<a href=\"(http://bbs\.appgame\.com/forum\.php\?mod=(viewthread)&amp;tid=(\d+)&amp;fromuid=(\d+))\"[\s\S]+?</a>#i",
-		"#<a href=\"(http://bbs\.appgame\.com/thread-(\d+)-(\d+)-(\d+)\.html)\"[\s\S]+?</a>#i"
-		);
-
-	return preg_replace_callback( $regex_bbs, 'embed_bbs_appgame_callback', $post);
+	global $regex_bbs;
+	return preg_replace_callback($regex_bbs, 'embed_bbs_appgame_callback', $post);
 }
 
 function is_mobile() 
@@ -89,7 +104,9 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 {
 	$user_agent = null;
 	if ($mobile) {
-		$user_agent = 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3';
+		$user_agent = 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3 '.UA_ONEBOX;
+	} else {
+		$user_agent = 'User-Agent: '.UA_ONEBOX;
 	}
 
 	$html = do_curl($ori_url, $user_agent);
@@ -123,6 +140,9 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 		$title = $match[1];
 	}
 
+	return "<a href=$ori_url target=\"_blank\">$title</a>"; 
+
+
 	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
 
 	$saw = new nokogiri($html);
@@ -134,8 +154,12 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$node = $dom->firstChild->childNodes->item(0); 
 	$content = node_to_html($node);
 
-	$html  = get_onebox_head($pid, 350);
-	$html .= "<a href=$ori_url target=\"_blank\">原始地址：$title</a>";
+	//这1行应该是不需要了，测试测试再算
+	//$content = remove_bbs_appgame_link($content);
+	$content = preg_replace("#<img[^>]*?>#us", '', $content);
+
+	$html  = get_onebox_head($pid, 350); 	if (!$mobile) {
+	$html .= "<a href=$ori_url target=\"_blank\">原始地址：$title</a>"; };
 	$html .= $content;
 	$html .= "</div>";
 
