@@ -8,7 +8,7 @@ Version: 0.0.1
 Author URI: https://github.com/huangqiheng
 */
 
-require_once 'function_oembed.php';
+require_once 'function-oembed.php';
 require_once 'post-meta-cache.php';
 
 new oEmbedAppgame();
@@ -144,8 +144,8 @@ class oEmbedAppgame{
 
 	public function add_filter_comment() 
 	{
-		//是否在后台可见，方便审核内容
-		//if ( is_admin() ) return;
+		//只在后台可见，方便审核内容
+		if (!is_admin()) return;
 
 		$clickable = has_filter( 'comment_text', 'make_clickable' );
 		$priority = ( $clickable ) ? $clickable - 1 : 10;

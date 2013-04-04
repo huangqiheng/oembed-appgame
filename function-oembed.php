@@ -123,6 +123,9 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 		}
 
 		if (!preg_match($regex_match, $html, $match)) {
+			if (preg_match("#class=\"alert_info\".*?(<p>[^<].*?</p>)#s", $html, $match)) {
+				return onebox_capsule(0, $match[1], 50);
+			}
 			return null;
 		}
 		$pid = $match[1];
@@ -131,17 +134,16 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	if ($mobile) {
 		$id_nokorigi = 'div[id=post_'.$pid.']';
 
-		preg_match("#<title>([^<]*?)</title>#", $html, $match);
+		preg_match("#<title>([^<]*?)</title>#s", $html, $match);
 		$title = $match[1];
 	} else {
 		$id_nokorigi = 'table[id=pid'.$pid.']';
 
-		preg_match("#id=\"thread_subject\">([^<]*?)</a>#", $html, $match);
+		preg_match("#id=\"thread_subject\">([^<]*?)</a>#s", $html, $match);
 		$title = $match[1];
 	}
 
-	return "<a href=$ori_url target=\"_blank\">$title</a>"; 
-
+	//return "<a href=$ori_url target=\"_blank\">$title</a>"; 
 
 	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
 
@@ -156,16 +158,40 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 	//这1行应该是不需要了，测试测试再算
 	//$content = remove_bbs_appgame_link($content);
-	$content = preg_replace("#<img[^>]*?>#us", '', $content);
+	$content = preg_replace_callback("#<img[^>]*?>#us", 'cut_images_but', $content);
 
-	$html  = get_onebox_head($pid, 350); 	if (!$mobile) {
-	$html .= "<a href=$ori_url target=\"_blank\">原始地址：$title</a>"; };
-	$html .= $content;
-	$html .= "</div>";
+	if ($mobile) {
+		$html = $content;
+	} else {
+		$html = "<a href=$ori_url target=\"_blank\">原始地址：$title</a>"; 
+		$html .= $content;
+	}
+
+	$html = onebox_capsule($pid, $html, 185);
 
 	$html = preg_replace("#<p>签到天数.*?</p>#us", "", $html);
 	$html = preg_replace("#<p>\[LV\..*?</p>#us", "", $html);
-	
+	$html = preg_replace("#(<br>)+#us", "", $html);
+	$html = preg_replace("#<i class=\"pstatus\">.*?</i>#us", "", $html);
+	return $html;
+}
+
+function cut_images_but($matchs)
+{
+	if (preg_match("#avatar\.php#i", $matchs[0])) {
+		return $matchs[0];
+	}
+	if (preg_match("#qs\.qlogo\.cn#i", $matchs[0])) {
+		return $matchs[0];
+	}
+	return null;
+}
+
+function onebox_capsule($pid, $content, $size=180)
+{
+	$html = get_onebox_head($pid, $size); 	
+	$html .= $content;
+	$html .= "</div>";
 	return $html;
 }
 

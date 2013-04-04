@@ -25,6 +25,8 @@ discuz:
 
 error_log:
   tail: '/var/log/fpm-php.bbs.log'
+
+cache_path: '/srv/http/public_html/site/app'
 end_of_string
 
 	File.open('config.yml', 'w') do |file|
@@ -33,11 +35,61 @@ end_of_string
 	puts '请修改config.yml文件，指定插件的安装目录'
 end
 
+def config
+	YAML.load_file 'config.yml'
+end
+
+namespace :cache do
+	desc '查看全部cache的内容'
+	task :all do
+		system "ls -lt '#{config['cache_path']}'| grep cache"
+	end
+	desc '查看所cache的mobile内容'
+	task :mobile do
+		system "ls -lt '#{config['cache_path']}'| grep mobile"
+	end
+	desc '查看所cache的未命中内容内容'
+	task :error do
+		system "ls -lt '#{config['cache_path']}'| grep ERROR"
+	end
+	desc '查看全部内容计数'
+	task :count do
+		system "ls '#{config['cache_path']}'| grep cache | wc -l"
+	end
+
+	namespace :rm do
+		desc '删除全部cache的内容'
+		task :all do
+			system "find '#{config['cache_path']}' -type f | grep cache | xargs rm"
+		end
+		desc '删除所cache的mobile内容'
+		task :mobile do
+			system "find '#{config['cache_path']}' -type f | grep mobile | xargs rm"
+		end
+		desc '删除所cache的未命中内容'
+		task :error do
+			system "find '#{config['cache_path']}' -type f | grep ERROR | xargs rm"
+		end
+		desc '删除所cache的bbs的内容'
+		task :bbs do
+			system "find '#{config['cache_path']}' -type f | grep bbs.appgame | xargs rm"
+		end
+	end
+
+	desc '删除cache的指定grep匹配的'
+	task :rm, :key  do |t, args|
+		system "find '#{config['cache_path']}' -type f | grep 'cache.*#{args[:key]}' | xargs rm"
+	end
+end
+
+desc '查看cache，指定关键字'
+task :cache, :key do |t, args|
+	system "ls -lt '#{config['cache_path']}'| grep 'cache.*#{args[:key]}'"
+end
+
 desc '查看error_log日志，使用tail -f命令'
 task :log do
-	config = YAML.load_file 'config.yml'
-	err_path = config['error_log']
-	system "tail -f '#{err_path['tail']}'"
+	system "tail -f '#{config['error_log']['tail']}'"
 end
 
 desc '从github中，更新本源代码。'
