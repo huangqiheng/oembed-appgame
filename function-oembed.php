@@ -136,40 +136,65 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 		preg_match("#<title>([^<]*?)</title>#s", $html, $match);
 		$title = $match[1];
+		$title = preg_replace("#_[^_]+_任玩堂#u", '', $title);
+		$size = 120;
+
 	} else {
 		$id_nokorigi = 'table[id=pid'.$pid.']';
 
 		preg_match("#id=\"thread_subject\">([^<]*?)</a>#s", $html, $match);
 		$title = $match[1];
+		$size = 140;
 	}
 
 	//return "<a href=$ori_url target=\"_blank\">$title</a>"; 
 
 	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
-
 	$saw = new nokogiri($html);
 	$target = $saw->get($id_nokorigi);
-
 	$dom = $target->getDom();
-	remove_doc_class($dom, 'plm mbm cl md_ctrl pattl');
-
+	remove_doc_class($dom, 'plm xg2 tip mbm cl p_pop md_ctrl pattl ad authi pi postatt box_ex2 user_first');
 	$node = $dom->firstChild->childNodes->item(0); 
 	$content = node_to_html($node);
+	$content = remove_trouble_tags($content);
 
-	$html = ($mobile)? $content : "<a href=$ori_url target=\"_blank\">原始地址：$title</a>".$content;
-	$html = onebox_capsule($pid, $html, 185);
+	$source  ="<a href=$ori_url target=\"_blank\">";
+	$source .=  '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
+	$source .=  "引用：$title";
+	$source .='</a>';
 
-	return remove_trouble_tags($html);
+	return onebox_capsule($pid, $source, $content, $size);
 }
 
 function remove_trouble_tags($html)
 {
 	$html = preg_replace_callback("#<img[^>]*?>#us", 'cut_images_but', $html);
-	$html = preg_replace("#<p>签到天数.*?</p>#us", "", $html);
-	$html = preg_replace("#<p>\[LV\..*?</p>#us", "", $html);
-	$html = preg_replace("#(<br>)+#us", "", $html);
-	$html = preg_replace("#<i class=\"pstatus\">.*?</i>#us", "", $html);
-	$html = preg_replace("#<script.*?</script>#us", "", $html);
+	$html = preg_replace("#<p>签到天数.*?</p>#us", '', $html);
+	$html = preg_replace("#<p>\[LV\..*?</p>#us", '', $html);
+	$html = preg_replace("#<br>#us", "", $html);
+	$html = preg_replace("#[\s]+#us", ' ', $html);
+	$html = preg_replace("#<font[^>]+>#us", "<font>", $html);
+	$html = preg_replace("#<i class=\"pstatus\">.*?</i>#us", '', $html);
+	$html = preg_replace("#<script.*?</script>#us", '', $html);
+	$html = preg_replace("#<div[^>]+>#us", '<div>', $html);
+	$html = preg_replace("#<em>.*</em>#us", '', $html);
+	$html = preg_replace("#<h1 class=\"vt_th\">[^<]*<a[^>]+>[^<]+</a>[^<]+</h1>#us", '', $html);
+	return $html;
+}
+
+function onebox_capsule($pid, $source, $result, $size=180)
+{
+	$html = get_onebox_head($pid, $size); 	
+	$html .=  '<div class="source">';
+	$html .= '<div class="info">';
+	$html .= $source;
+	$html .= '</div>';
+	$html .= '</div>';
+	$html .= '<div class="onebox-result-body">';
+	$html .= $result;
+	$html .= '</div>';
+	$html .= '<div class="clearfix"></div>';
+	$html .= "</div><!--onebox-end-->";
 	return $html;
 }
 
@@ -178,18 +203,13 @@ function cut_images_but($matchs)
 	if (preg_match("#avatar\.php#i", $matchs[0])) {
 		return $matchs[0];
 	}
+	if (preg_match("#favicon\.ico#i", $matchs[0])) {
+		return $matchs[0];
+	}
 	if (preg_match("#qs\.qlogo\.cn#i", $matchs[0])) {
 		return $matchs[0];
 	}
 	return null;
-}
-
-function onebox_capsule($pid, $content, $size=180)
-{
-	$html = get_onebox_head($pid, $size); 	
-	$html .= $content;
-	$html .= "</div><!--onebox-end-->";
-	return $html;
 }
 
 function get_onebox_head($pid, $size)
