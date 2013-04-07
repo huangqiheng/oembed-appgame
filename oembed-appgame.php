@@ -139,10 +139,14 @@ class oEmbedAppgame{
 		//构造一个特殊的“命令”
 		if (empty($return)) {
 			if (preg_match("#/([\d]+?)\.html$#", $ori_url, $cmd_int)) {
-				if ($cmd_int[1] == 7777777) {
-					flush_post_cache();
-					error_log('flush_post_cache succeed');
-				}
+                                if ($cmd_int[1] == 7777777) {
+                                        flush_post_cache();
+                                        error_log('flush_post_cache all succeed');
+                                } else 
+                                if ($cmd_init[1] == 5555555) {
+                                        flush_post_cache(get_the_id());
+                                        error_log('flush_post_cache one succeed');
+                                }
 			}
 			return null;
 		}

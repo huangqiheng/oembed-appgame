@@ -4,14 +4,20 @@
 define('OEMBED_CONTENTS','oembed-content-list');
 define('DELIMITER_MARK', '@DELIMITER@');
 
-function flush_post_cache()
-{
-	$allposts = get_posts('numberposts=0&post_type=post&post_status=');      
-
-	foreach($allposts as $postinfo) {      
-		delete_post_meta($postinfo->ID, OEMBED_CONTENTS);      
-	} 
-}
+function flush_post_cache($post_id=null)
+{                       
+        if (empty($post_id)) {
+                $allposts = get_posts('numberposts=-1&post_type=post&post_status=any');
+        
+                foreach($allposts as $postinfo) {
+                        if (delete_post_meta($postinfo->ID, OEMBED_CONTENTS)) {
+                                error_log('succeed delete meta :'.$postinfo->post_title);
+                        }
+                } 
+        } else {
+                delete_post_meta($post_id, OEMBED_CONTENTS);
+        }
+}   
 
 function get_post_cache($ori_url)
 {

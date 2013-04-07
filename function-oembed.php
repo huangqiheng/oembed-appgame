@@ -103,6 +103,71 @@ function embed_bbs_appgame_callback( $match )
 function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 {
 	$user_agent = null;
+	$user_agent = 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3 '.UA_ONEBOX;
+
+	$html = do_curl($ori_url, $user_agent);
+
+	if (empty($html)) {
+		return null;
+	}
+
+	if (empty($pid)) {
+		$regex_match = "#<div id=\"post_(\d+)\" class=\"vb (vc|notb)\">#s";
+
+		if (!preg_match($regex_match, $html, $match)) {
+			if (preg_match("#class=\"alert_info\".*?(<p>[^<].*?</p>)#s", $html, $match)) {
+				return onebox_capsule($ori_url, 'not found', $match[1], 50);
+			}
+			return null;
+		}
+		$pid = $match[1];
+	}
+
+
+	preg_match("#<title>([^<]*?)</title>#s", $html, $match);
+	$title = $match[1];
+	$title = preg_replace("#_[^_]+_任玩堂#u", '', $title);
+	$size = 65;
+
+
+	//return "<a href=$ori_url target=\"_blank\">$title</a>"; 
+
+	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
+	$id_nokorigi = 'div[id=postmessage_'.$pid.']';
+	$saw = new nokogiri($html);
+	$target = $saw->get($id_nokorigi);
+	$dom = $target->getDom();
+	$node = $dom->firstChild->childNodes->item(0); 
+	$content = node_to_html($node);
+
+	$content = preg_replace("#<i class=\"pstatus\">.*?</i>#us", '', $content);
+	$content = preg_replace("#[\s]+#us", '', $content);
+	$content = strip_tags($content);
+	$content = trim($content);
+
+	if (mb_strlen($content) > 150) {
+		$content = mb_substr($content, 0, 149, 'utf-8');
+	}
+
+	return onebox_capsule($ori_url, $title, $content, $size);
+}
+
+function remove_trouble_tags_mobile($html)
+{
+	$html = preg_replace_callback("#<img[^>]*?>#us", 'cut_images_but', $html);
+	$html = preg_replace("#<br>#us", "", $html);
+	$html = preg_replace("#<font[^>]+>#us", "<font>", $html);
+	$html = preg_replace("#<i class=\"pstatus\">.*?</i>#us", '', $html);
+	$html = preg_replace("#<script.*?</script>#us", '', $html);
+	$html = preg_replace("#<div[^>]+>#us", '<div>', $html);
+	$html = preg_replace("#<a href=[^>]+>[^<]*</a>#us", '', $html);
+	$html = preg_replace("#[\s]+#us", '', $html);
+	return $html;
+}
+
+function __get_bbspage_form_url($ori_url, $pid, $mobile=false)
+{
+	$user_agent = null;
 	if ($mobile) {
 		$user_agent = 'User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3 '.UA_ONEBOX;
 	} else {
