@@ -124,7 +124,7 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 		if (!preg_match($regex_match, $html, $match)) {
 			if (preg_match("#class=\"alert_info\".*?(<p>[^<].*?</p>)#s", $html, $match)) {
-				return onebox_capsule(0, $ori_url, 'not found', $match[1], 50);
+				return onebox_capsule($ori_url, 'not found', $match[1], 50);
 			}
 			return null;
 		}
@@ -158,12 +158,41 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$content = node_to_html($node);
 	$content = remove_trouble_tags($content);
 
-	$source  ="<a href=$ori_url target=\"_blank\">";
-	$source .=  '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
-	$source .=  "引用：$title";
-	$source .='</a>';
+	return onebox_capsule($ori_url, $title, $content, $size);
+}
 
-	return onebox_capsule($pid, $ori_url, $title, $content, $size);
+function onebox_capsule($ori_url, $title, $content, $size=180)
+{
+	$html = '<div class="onebox-result" style="height: '.$size.'px; overflow-y: hidden;">';
+	$html .=   '<div class="source">';
+	$html .=     '<div class="info">';
+	$html .=       '<a href="'.$ori_url.'" target="_blank">';
+	$html .=         '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
+	$html .=         "引用：$title";
+	$html .=       '</a>';
+	$html .=     '</div>';
+	$html .=   '</div>';
+
+	$html .= '<div class="onebox-result-body">';
+	$html .=   $content;
+	$html .= '</div>';
+
+	$html .= '<div class="clearfix"></div>';
+	$html .= '</div><!--onebox-end-->';
+	return $html;
+
+	/*
+	make_onebox_from_template(
+		'http://bbs.appgame.com',
+		'任玩堂论坛',
+		'http://www.appgame.com/favicon.ico',
+		$ori_url,
+		$title,
+		$image,
+		$content,
+		$size
+	);
+	*/
 }
 
 function remove_trouble_tags($html)
@@ -182,41 +211,6 @@ function remove_trouble_tags($html)
 	return $html;
 }
 
-function onebox_capsule($pid, $ori_url, $title, $content, $size=180)
-{
-	$html = get_onebox_head($pid, $size); 	
-	$html .=  '<div class="source">';
-	$html .= '<div class="info">';
-
-	$html  ="<a href=$ori_url target=\"_blank\">";
-	$html .=  '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
-	$html .=  "引用：$title";
-	$html .='</a>';
-
-	$html .= '</div>';
-	$html .= '</div>';
-	$html .= '<div class="onebox-result-body">';
-	$html .= $content;
-	$html .= '</div>';
-	$html .= '<div class="clearfix"></div>';
-	$html .= "</div><!--onebox-end-->";
-
-	/*
-	make_onebox_from_template(
-		'http://bbs.appgame.com',
-		'任玩堂论坛',
-		'http://www.appgame.com/favicon.ico',
-		$ori_url,
-		$title,
-		$image,
-		$content,
-		$size
-	);
-	*/
-
-	return $html;
-}
-
 function cut_images_but($matchs)
 {
 	if (preg_match("#avatar\.php#i", $matchs[0])) {
@@ -229,12 +223,6 @@ function cut_images_but($matchs)
 		return $matchs[0];
 	}
 	return null;
-}
-
-function get_onebox_head($pid, $size)
-{
-	$thecon = 'thecon'.$pid;
-	return "<div class=\"onebox-result\" id=$thecon style=\"height: ".$size."px; overflow-y: hidden;\">";
 }
 
 function remove_doc_class($doc, $class_names)
@@ -468,7 +456,7 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 
 	//构造html模板
 	$html = make_onebox_from_template(
-		$provier_url,
+		$provider_url,
 		$provider_name,
 		$favicon_url,
 		$ori_url,
@@ -483,7 +471,7 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 }
 
 function make_onebox_from_template(
-		$provier_url,
+		$provider_url,
 		$provider_name,
 		$favicon_url,
 		$ori_url,
@@ -501,7 +489,7 @@ function make_onebox_from_template(
 
 	$html .=   "<div class=\"source\">";
 	$html .=     "<div class=\"info\">";
-	$html .=       "<a href=$provider_url target=\"_blank\">";
+	$html .=       '<a href="'.$provider_url.'" target="_blank">';
 	$html .=         "<img class=\"favicon\" src=$favicon_url>$provider_name";
 	$html .=       "</a>";
 	$html .=     "</div>";
