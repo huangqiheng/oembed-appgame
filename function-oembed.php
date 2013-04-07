@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 require_once 'nokogiri.php';
 
@@ -90,11 +90,11 @@ function embed_bbs_appgame_callback( $match )
 
 	if ($return) {
 		put_cache_data($save_name, $return);
-		error_log('new done: '.$ori_url);
+		error_log('new done: '.$ori_url.' from '.$_SERVER['REQUEST_URI']);
 	} else {
 		//错误？需要通知相关人等
 		put_cache_data($save_name.ERROR_NAME, $return);
-		error_log('not done: '.$ori_url);
+		error_log('not done: '.$ori_url.' from '.$_SERVER['REQUEST_URI']);
 	}
 
 	return $return;
@@ -124,7 +124,7 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 		if (!preg_match($regex_match, $html, $match)) {
 			if (preg_match("#class=\"alert_info\".*?(<p>[^<].*?</p>)#s", $html, $match)) {
-				return onebox_capsule(0, $match[1], 50);
+				return onebox_capsule(0, $ori_url, 'not found', $match[1], 50);
 			}
 			return null;
 		}
@@ -163,7 +163,7 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$source .=  "引用：$title";
 	$source .='</a>';
 
-	return onebox_capsule($pid, $source, $content, $size);
+	return onebox_capsule($pid, $ori_url, $title, $content, $size);
 }
 
 function remove_trouble_tags($html)
@@ -182,19 +182,38 @@ function remove_trouble_tags($html)
 	return $html;
 }
 
-function onebox_capsule($pid, $source, $result, $size=180)
+function onebox_capsule($pid, $ori_url, $title, $content, $size=180)
 {
 	$html = get_onebox_head($pid, $size); 	
 	$html .=  '<div class="source">';
 	$html .= '<div class="info">';
-	$html .= $source;
+
+	$html  ="<a href=$ori_url target=\"_blank\">";
+	$html .=  '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
+	$html .=  "引用：$title";
+	$html .='</a>';
+
 	$html .= '</div>';
 	$html .= '</div>';
 	$html .= '<div class="onebox-result-body">';
-	$html .= $result;
+	$html .= $content;
 	$html .= '</div>';
 	$html .= '<div class="clearfix"></div>';
 	$html .= "</div><!--onebox-end-->";
+
+	/*
+	make_onebox_from_template(
+		'http://bbs.appgame.com',
+		'任玩堂论坛',
+		'http://www.appgame.com/favicon.ico',
+		$ori_url,
+		$title,
+		$image,
+		$content,
+		$size
+	);
+	*/
+
 	return $html;
 }
 
@@ -332,11 +351,11 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 
 	if ($can_save) {
 		put_cache_data($ori_url, $return);
-		error_log('new done: '.$ori_url);
+		error_log('new done: '.$ori_url.' from '.$_SERVER['REQUEST_URI']);
 	} else {
 		put_cache_data($ori_url.ERROR_NAME, $return);
 		//资料不全？需要通知相关人等
-		error_log('not done: '.$ori_url);
+		error_log('not done: '.$ori_url.' from '.$_SERVER['REQUEST_URI']);
 	}
 
 	return $return;
@@ -448,7 +467,38 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 	}
 
 	//构造html模板
-	$html  = "<div class=\"onebox-result\">";
+	$html = make_onebox_from_template(
+		$provier_url,
+		$provider_name,
+		$favicon_url,
+		$ori_url,
+		$title,
+		$image,
+		$content
+		);
+
+	$can_save = ($image && $title && $content);
+
+	return $html;
+}
+
+function make_onebox_from_template(
+		$provier_url,
+		$provider_name,
+		$favicon_url,
+		$ori_url,
+		$title,
+		$image,
+		$content,
+		$size=0
+		)
+{
+	if ($size == 0) {
+		$html  = "<div class=\"onebox-result\">";
+	} else {
+		$html  = "<div class=\"onebox-result\" style=\"height: ".$size."px; overflow-y: hidden;\">";
+	}
+
 	$html .=   "<div class=\"source\">";
 	$html .=     "<div class=\"info\">";
 	$html .=       "<a href=$provider_url target=\"_blank\">";
@@ -457,16 +507,16 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 	$html .=     "</div>";
 	$html .=   "</div>";
 
+	$html .=   "<h3>";
+	$html .=     "<a href=$ori_url target=\"_blank\" class=\"onebox-title\">$title</a>";
+	$html .=   "</h3>";
+
 	$html .=   "<div class=\"onebox-result-body\">"; if ($image) {
 	$html .=     "<a href=$ori_url target=\"_blank\"><img src=$image class=\"thumbnail\"></a>";}
-	$html .=     "<h3><a href=$ori_url target=\"_blank\" class=\"onebox-title\">$title</a></h3>";
 	$html .=     $content;
 	$html .=   "</div>";
 	$html .=   "<div class=\"clearfix\"></div>";
 	$html .= "</div>";
-
-	$can_save = ($image && $title && $content);
-
 	return $html;
 }
 

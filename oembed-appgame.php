@@ -134,6 +134,17 @@ class oEmbedAppgame{
 		$res_body = get_oembed_from_api ($api_prefix, $ori_url);
 		$return = make_oembed_template ($res_body, $ori_url, $can_save);
 
+		//构造一个特殊的“命令”
+		if (empty($return)) {
+			if (preg_match("#/([\d]+?)\.html$#", $ori_url, $cmd_int)) {
+				if ($cmd_int[1] == 7777777) {
+					flush_post_cache();
+					error_log('flush_post_cache succeed');
+				}
+			}
+			return null;
+		}
+
 		return set_post_cache($ori_url, $return);
 	}
 

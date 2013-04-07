@@ -28,6 +28,10 @@ function get_post_cache($ori_url)
 
 function set_post_cache($ori_url, $data)
 {
+	if (empty($data)) {
+		return null;
+	}
+	
 	$cached = get_post_cache($ori_url);
 
 	if (empty($cached)) {

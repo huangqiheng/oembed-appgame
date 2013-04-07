@@ -128,9 +128,7 @@ task :alpha do
 end
 
 desc '默认就是rake log测试操作。'
-task :default do
-	Rake::Task['log'].invoke
-end
+task :default => ['log']
 
 desc '从github中，更新本源代码，并且执行install安装过程。'
 task :update => [:pull, :install]
