@@ -129,7 +129,6 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$title = preg_replace("#_[^_]+_任玩堂#u", '', $title);
 	$size = 65;
 
-
 	//return "<a href=$ori_url target=\"_blank\">$title</a>"; 
 
 	$html= mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
@@ -140,16 +139,23 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	$node = $dom->firstChild->childNodes->item(0); 
 	$content = node_to_html($node);
 
+	$content = clean_tags($content);
+
+	return onebox_capsule($ori_url, $title, $content, $size);
+}
+
+function clean_tags($content) 
+{
 	$content = preg_replace("#<i class=\"pstatus\">.*?</i>#us", '', $content);
 	$content = preg_replace("#[\s]+#us", '', $content);
 	$content = strip_tags($content);
 	$content = trim($content);
 
-	if (mb_strlen($content) > 150) {
-		$content = mb_substr($content, 0, 149, 'utf-8');
+	if (mb_strlen($content) > 144) {
+		$content = mb_substr($content, 0, 143, 'utf-8');
 	}
 
-	return onebox_capsule($ori_url, $title, $content, $size);
+	return $content;
 }
 
 function remove_trouble_tags_mobile($html)
@@ -228,12 +234,13 @@ function __get_bbspage_form_url($ori_url, $pid, $mobile=false)
 
 function onebox_capsule($ori_url, $title, $content, $size=180)
 {
-	$html = '<div class="onebox-result" style="height: '.$size.'px; overflow-y: hidden;">';
+	//$html = '<div class="onebox-result" style="height: '.$size.'px; overflow-y: hidden;">';
+	$html = '<div class="onebox-result">';
 	$html .=   '<div class="source">';
 	$html .=     '<div class="info">';
 	$html .=       '<a href="'.$ori_url.'" target="_blank">';
 	$html .=         '<img class="favicon" src="http://www.appgame.com/favicon.ico">';
-	$html .=         "引用：$title";
+	$html .=         "论坛引用：$title";
 	$html .=       '</a>';
 	$html .=     '</div>';
 	$html .=   '</div>';
@@ -511,13 +518,17 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 	$image = $data->thumbnail_url;
 	$title = $data->title;
 	$content = $data->html;
-
+/*
 	//截断过长的html内容
         mb_internal_encoding("UTF-8");
 
 	if (mb_strlen($content) > 255) {
 		$content = remove_html_tag($content);
 	}
+*/
+
+        mb_internal_encoding("UTF-8");
+	$content = clean_tags($content);
 
 	//构造html模板
 	$html = make_onebox_from_template(

@@ -63,12 +63,10 @@ class oEmbedAppgame{
 		//注册itunes链接在文章内的embed
 		wp_embed_register_handler('embed_itunes', $this->regex_itunes,array(&$this, 'embed_itunes_handler'));
 
-/*
 		//注册bbs.appgame.com网站的embed
 		foreach ($this->regex_bbs as $key=>$value) {
 			wp_embed_register_handler($key, $value,array(&$this, 'oembed_bbs_appgame_handler'));
 		}
-*/
 	}
 
 	public function on_page_initial() 
