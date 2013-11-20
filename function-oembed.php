@@ -734,9 +734,7 @@ function get($appcontent, $country)
 		}
 		$key++;
 		$i++;
-		//$v = substr($v, 0, -3) . ($device == "iPad" ? "480x480" : "320x480") . "-75.jpg";
-		$v = substr($v, 0, -3)."jpg";
-
+		$v = substr($v, 0, -3) . ($device == "iPad" ? "480x480" : "320x480") . "-75.jpg";
 		$v = str_replace('.1024x1024-65','',$v);
 		$screenhots .= "<a href='$v' target='_blank'><img src='$v' alt='$app_name - Screen shot-$key' /></a>";
 	}
