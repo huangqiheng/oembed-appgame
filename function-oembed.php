@@ -617,10 +617,8 @@ function process_itunes_link($post)
 				
 				return str_replace($link, process_link($link) . get($pageContents, $country), $post);
 			}
-			
 			break;
 		}
-		
 		return str_replace($link,  get(file_get_contents($appfile), $country) . process_link($link), $post);
 	}
 	return $post;
@@ -762,7 +760,7 @@ $content = <<<EOT
 	<div class="appstyle_container2">
 		<div class="appstyle_logo"><div class="appstyle-logomask"><img src="http://www.appgame.com/source/rating/app-style-logocover.png" alt="itunes logo mask" /></div><div class="appstyle-logoimg"><img src='$app_logo' alt='$app_name' style="width:72px;height:72px;" /></div></div>
 		<div class="appstyle_button">
-		<span class="appstyle_newprice">$app_price</span><br /><a href='$view_url' target="_blank" title="前往App Store下载"><img src="http://www.appgame.com/source/rating/app-style-download.jpg" alt="Download" /></a>
+		<span class="appstyle_newprice">$app_price</span><br /><a href='$view_url' target="_blank" title="前往App Store下载"><img src="http://www.appgame.com/source/images/button/app-download-ios-common.png" alt="Download" /></a>
 		</div>
 		<div class="appstyle_des">
             	<span class="appstyle_name">$app_name</span><br />
