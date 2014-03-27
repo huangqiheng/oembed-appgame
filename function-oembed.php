@@ -144,14 +144,15 @@ function get_bbspage_form_url($ori_url, $pid, $mobile=false)
 	return onebox_capsule($ori_url, $title, $content, $size);
 }
 
-function clean_tags($content) 
+function clean_tags($content, $max_size=144) 
 {
+        mb_internal_encoding("UTF-8");
 	$content = preg_replace("#<i class=\"pstatus\">.*?</i>#us", '', $content);
 	$content = preg_replace("#[\s]+#us", '', $content);
 	$content = strip_tags($content);
 	$content = trim($content);
 
-	if (mb_strlen($content) > 144) {
+	if (mb_strlen($content) > $max_size) {
 		$content = mb_substr($content, 0, 143, 'utf-8');
 	}
 
@@ -252,19 +253,6 @@ function onebox_capsule($ori_url, $title, $content, $size=180)
 	$html .= '<div class="clearfix"></div>';
 	$html .= '</div><!--onebox-end-->';
 	return $html;
-
-	/*
-	make_onebox_from_template(
-		'http://bbs.appgame.com',
-		'任玩堂论坛',
-		'http://www.appgame.com/favicon.ico',
-		$ori_url,
-		$title,
-		$image,
-		$content,
-		$size
-	);
-	*/
 }
 
 function remove_trouble_tags($html)
@@ -366,7 +354,7 @@ function get_cache_file_name($key)
 {
 	$search = array(':','.',',',';','/','|','?','&','#','@','!','+','=');
 	$url_file = str_replace($search, '-', $key);
-	return "app/cache-".$url_file.".txt";
+	return "/srv/http/public_html/appgame/app/cache-".$url_file.".txt";
 }
 
 function get_cache_data($ori_url)
@@ -395,6 +383,22 @@ function put_cache_data($key, $data)
 	return $data;
 }
 
+define('USE_JSONAPI', true);
+
+function get_oembed_appgame($api_prefix, $ori_url)
+{
+	if (USE_JSONAPI) {
+		$oembed = get_oembed_from_api ($api_prefix, $ori_url);
+		$post_obj = get_oembed_from_jsonapi($ori_url);
+		return make_oembed_template2($oembed, $post_obj);
+	} else {
+		$can_save = false;
+		$res_body = get_oembed_from_api ($api_prefix, $ori_url);
+		$return = make_oembed_template ($res_body, $ori_url, $can_save);
+		return [$can_save, $return];
+	}
+}
+
 function get_appgame_oembed_content($api_prefix, $ori_url)
 {
 	if ($res = get_cache_data($ori_url)) {
@@ -405,9 +409,7 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 		return $res;
 	}
 
-	$can_save = false;
-	$res_body = get_oembed_from_api ($api_prefix, $ori_url);
-	$return = make_oembed_template ($res_body, $ori_url, $can_save);
+	list($can_save, $return) = get_oembed_appgame($api_prefix, $ori_url);
 
 	if ($can_save) {
 		put_cache_data($ori_url, $return);
@@ -421,17 +423,63 @@ function get_appgame_oembed_content($api_prefix, $ori_url)
 	return $return;
 }       
 
+function get_oembed_from_jsonapi($ori_url)
+{
+	$api_url = $ori_url.'?json=1';
+	$res = do_curl($api_url);
+
+	if (empty($res)) {
+		return null;
+	}
+
+	$res = clean_html($res);
+	preg_match("#{[\s]*\".*[\s]*}#ui", $res, $mm);
+	$res_body = @$mm[0];
+
+	if (empty($res_body)) {
+		return null;
+	}
+
+	$data = json_decode($res_body, true);
+
+	if (empty($data)) {
+		return null;
+	}
+
+	return $data['post'];
+}
+
+function clean_html($json)
+{
+	$json = preg_replace( '/[[:cntrl:]]+/', ' ',$json);
+	$json = preg_replace( '/[\s]+/', ' ',$json);
+	return $json;
+}
+
 function do_curl($url, $user_agent=null)
 {
-	$headers = array(
-		"Accept: application/json",
-		"Accept-Encoding: deflate,sdch",
-		"Accept-Charset: utf-8;q=1"
-		);
+	$args = array(
+	    'timeout'     => 5,
+	    'redirection' => 5,
+	    'httpversion' => '1.0',
+	    'blocking'    => true,
+	    'headers'     => array(),
+	);
 
-	if ($user_agent) {
-		$headers[] = $user_agent;
+	if ($user_agent)
+    	    $args['user-agent']  = $user_agent;
+
+
+	$response = wp_remote_get( $url, $args );
+
+	if ( is_wp_error($response) || ! isset($response['body']) ) {
+	    syslog(LOG_ERR, "do_curl error for: " . $url . " ERR: " . print_r($response, true));
+	    return '';
 	}
+
+	return $response['body'];
+
+/*
 
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $url);
@@ -439,19 +487,23 @@ function do_curl($url, $user_agent=null)
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
 	curl_setopt($ch, CURLOPT_HEADER, 0);
 	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-	curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
+	//curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
 	curl_setopt($ch, CURLOPT_TIMEOUT, 3);
 
-	$res = curl_exec($ch);
+	//$res = curl_exec($ch);
+	$res = curl_exec_follow($ch);
 	$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 	$err = curl_errno($ch);
 	curl_close($ch);
 
 	if (($err) || ($httpcode !== 200)) {
+	        syslog(LOG_ERR, "do_curl: " . $url . " code: " . $httpcode);
 		return null;
 	}
 
 	return $res;
+
+*/
 }
 
 function get_oembed_from_api ($api_prefix, $ori_url)
@@ -518,32 +570,130 @@ function make_oembed_template ($res_body, $ori_url, &$can_save)
 	$image = $data->thumbnail_url;
 	$title = $data->title;
 	$content = $data->html;
-/*
+	/*
 	//截断过长的html内容
-        mb_internal_encoding("UTF-8");
+	mb_internal_encoding("UTF-8");
 
 	if (mb_strlen($content) > 255) {
-		$content = remove_html_tag($content);
+	$content = remove_html_tag($content);
 	}
-*/
+	 */
 
-        mb_internal_encoding("UTF-8");
+	mb_internal_encoding("UTF-8");
 	$content = clean_tags($content);
 
 	//构造html模板
 	$html = make_onebox_from_template(
-		$provider_url,
-		$provider_name,
-		$favicon_url,
-		$ori_url,
-		$title,
-		$image,
-		$content
-		);
+			$provider_url,
+			$provider_name,
+			$favicon_url,
+			$ori_url,
+			$title,
+			$image,
+			$content
+			);
 
 	$can_save = ($image && $title && $content);
 
 	return $html;
+}
+
+function make_oembed_template2 ($res_body, $post_obj)
+{
+	$ori_url = @$post_obj['url'];
+
+	if (empty($res_body)) {
+		return [false, $ori_url];
+	}
+
+
+	$data = json_decode($res_body, true);
+
+	if (empty($data)) {
+		return [false, $ori_url];
+	}
+
+	$favicon_url = "http://www.appgame.com/favicon.ico";
+	$content = clean_tags(@$post_obj['content'], 256);
+	$image = @$post_obj['thumbnail'];
+
+	//构造html模板
+	$html = make_onebox_from_template_2(
+		$data['provider_url'],
+		$data['provider_name'],
+		$data['author_name'],
+		$data['author_url'],
+		$favicon_url,
+		$ori_url,
+		$data['title'],
+		$image,
+		$content,
+		@$post_obj['modified']
+		);
+
+	$can_save = ($image && $title && $content);
+
+	return [$can_save, $html];
+}
+
+function make_onebox_from_template_2(
+		$provider_url,
+		$provider_name,
+		$author,
+		$author_url,
+		$favicon_url,
+		$ori_url,
+		$title,
+		$image,
+		$content,
+		$modified
+		)
+{
+/*
+<div class="onebox_block">
+    <div class="onebox_side"></div>
+    <div class="onebox_body">
+    	<div class="onebox_body_head">
+      	<span class="onebox_body_head_time">6小时前</span>
+        <span class="onebox_body_head_link"><a href="#" target="_blank">日系手机游戏第一站<b></b></a></span>
+      </div>
+      <div class="onebox_body_content">
+      	<a href="#" class="link_title" target="_blank">《我叫MT Online》技能导师自杀攻略之冬之严寒（高级暴风雪）</a>
+        <h3><b class="onebox_author"><a href="#" target="_blank">Cerium</a></b> 发表于 <strong class="onebox_time">2014-03-26 18:00:01</strong></h3>
+        <p class="onebox_art">
+        	感谢任玩堂堂友yang5688友情提供。在前两天为大家带来了技能导师自杀攻略之箭雨（高级乱射） 以及技能导师自杀攻略之大风车（高级旋风斩）后，今天继续带来技能导师自杀攻略之冬之严寒（高级暴风雪），此攻略写给有需要的朋友，如果你已经能完美自杀技能导师，那么你可以直接略过了。高级旋风斩BOSS，普通攻击1W1左右，技能攻击1W2左右......
+        </p>
+	<div class="onbox_thimg"><a href="#"  target="_blank"><img src="#" alt="" /></a></div>
+        <h4><a href="#" class="link_more" target="_blank"></a></h4>
+      </div>
+    </div>
+  </div>
+*/
+	$html = [
+	    '<div class="onebox_block">',
+		'<div class="onebox_side"></div>',
+		'<div class="onebox_body">',
+		    '<div class="onebox_body_head">',
+			    '<span class="onebox_body_head_time">'.$modified.'</span>',
+			    '<span class="onebox_body_head_link">',
+			    	'<a href="'.$provider_url.'" target="_blank">'.$provider_name.'<b></b></a>',
+			    '</span>',
+		    '</div>',
+		    '<div class="onebox_body_content">',
+			    '<a href="'.$ori_url.'" class="link_title" target="_blank">'.$title.'</a>',
+			    '<h3><b class="onebox_author"><a href="'.$author_url.'" target="_blank">'.$author.'</a></b> 发表于 ',
+			    	'<strong class="onebox_time">'.$modified.'</strong></h3>',
+			    '<p class="onebox_art">',
+			    $content.'......',
+			    '</p>',
+			    '<div class="onebox_thimg"><a href="'.$ori_url.'"  target="_blank"><img src="'.$image.'" alt="" /></a></div>',
+			    '<h4><a href="'.$ori_url.'" class="link_more" target="_blank"></a></h4>',
+		    '</div>',
+		'</div>',
+	    '</div>'
+	];
+
+	return implode('', $html);
 }
 
 function make_onebox_from_template(
@@ -566,17 +716,17 @@ function make_onebox_from_template(
 	$html .=   "<div class=\"source\">";
 	$html .=     "<div class=\"info\">";
 	$html .=       '<a href="'.$provider_url.'" target="_blank">';
-	$html .=         "<img class=\"favicon\" src=$favicon_url>$provider_name";
+	$html .=         "<img class=\"favicon\" src=\"{$favicon_url}\" />{$provider_name}";
 	$html .=       "</a>";
 	$html .=     "</div>";
 	$html .=   "</div>";
 
 	$html .=   "<h3>";
-	$html .=     "<a href=$ori_url target=\"_blank\" class=\"onebox-title\">$title</a>";
+	$html .=     "<a href=\"{$ori_url}\" target=\"_blank\" class=\"onebox-title\">{$title}</a>";
 	$html .=   "</h3>";
 
 	$html .=   "<div class=\"onebox-result-body\">"; if ($image) {
-	$html .=     "<a href=$ori_url target=\"_blank\"><img src=$image class=\"thumbnail\"></a>";}
+	$html .=     "<a href=\"{$ori_url}\" target=\"_blank\"><img src=\"{$image}\" class=\"thumbnail\"></a>";}
 	$html .=     $content;
 	$html .=   "</div>";
 	$html .=   "<div class=\"clearfix\"></div>";
@@ -617,8 +767,10 @@ function process_itunes_link($post)
 				
 				return str_replace($link, process_link($link) . get($pageContents, $country), $post);
 			}
+			
 			break;
 		}
+		
 		return str_replace($link,  get(file_get_contents($appfile), $country) . process_link($link), $post);
 	}
 	return $post;
@@ -760,7 +912,7 @@ $content = <<<EOT
 	<div class="appstyle_container2">
 		<div class="appstyle_logo"><div class="appstyle-logomask"><img src="http://www.appgame.com/source/rating/app-style-logocover.png" alt="itunes logo mask" /></div><div class="appstyle-logoimg"><img src='$app_logo' alt='$app_name' style="width:72px;height:72px;" /></div></div>
 		<div class="appstyle_button">
-		<span class="appstyle_newprice">$app_price</span><br /><a href='$view_url' target="_blank" title="前往App Store下载"><img src="http://www.appgame.com/source/images/button/app-download-ios-common.png" alt="Download" /></a>
+		<span class="appstyle_newprice">$app_price</span><br /><a href='$view_url' target="_blank" title="前往App Store下载"><img src="http://www.appgame.com/source/rating/app-style-download.jpg" alt="Download" /></a>
 		</div>
 		<div class="appstyle_des">
             	<span class="appstyle_name">$app_name</span><br />

@@ -49,8 +49,78 @@ class oEmbedAppgame{
 		//获取wordpress插件加载时机
 		add_action( 'plugins_loaded', array(&$this, 'on_plugins_loaded'));
 
+		//加载js
+		add_action('wp_head', array(&$this, 'my_wp_head'));
+
 		//获取页面初始化时机
 		add_action( 'init', array( $this, 'on_page_initial' ) );
+	}
+
+	public function my_wp_head() 
+	{
+		echo <<<EOB
+<script type="text/javascript">
+	var elapsed_time = function () {
+		var time_elmts = $(".onebox_body_head_time");
+		for(var i=0; i<time_elmts.length; i++) {
+			var date = new Date(time_elmts[i].innerHTML);
+			var now_date = new Date();
+
+			var months = (now_date.getFullYear() - date.getFullYear()) * 12;
+			months += now_date.getMonth() - date.getMonth();
+			if (now_date.getDate() < date.getDate()){
+				months--;
+			}
+			var years = months / 12;
+			if (years > 1) {
+				time_elmts[i].innerHTML = Math.floor(years) + "年前";
+				continue;
+			}
+			if (months > 1) {
+				time_elmts[i].innerHTML = months + "个月前";
+				continue;
+			}
+
+			var start = date.getTime() / 1000;
+			var now = now_date.getTime() / 1000;
+
+			var days=Math.floor((now-start) / 86400);
+			if (days > 1) {
+				time_elmts[i].innerHTML = days + "天前";
+				continue;
+			}
+			var hours = Math.floor(((now-start) - (days * 86400 ))/3600)
+			if (hours > 1) {
+				time_elmts[i].innerHTML = hours + "小时前";
+				continue;
+			}		
+			var minutes = Math.floor(((now-start) - (days * 86400 ) - (hours *3600 ))/60);
+			if (minutes > 1) {
+				time_elmts[i].innerHTML = minutes + "分钟前";
+				continue;
+			}
+			var secs = Math.floor(((now-start) - (days * 86400 ) - (hours *3600 ) - (minutes*60)));
+			if (secs > 1) {
+				time_elmts[i].innerHTML = secs + "秒前";
+				continue;
+			}
+		}
+	};
+	var fix_margin = function(){
+		var oneboxs = $('.onebox_block');
+		for(var i=0; i<oneboxs.length; i++){
+			var onebox_next = $(oneboxs[i]).next()[0];
+			if (onebox_next.className === 'onebox_block') {
+				$(oneboxs[i]).css('margin-bottom', '0px');
+			}
+		}
+	};
+	window.onload=function(){
+		elapsed_time();
+		//fix_margin();
+	};
+</script>
+EOB;
 	}
 
 	public function on_plugins_loaded()
@@ -130,9 +200,7 @@ class oEmbedAppgame{
 			return $content;
 		} 
 
-		$can_save = false;
-		$res_body = get_oembed_from_api ($api_prefix, $ori_url);
-		$return = make_oembed_template ($res_body, $ori_url, $can_save);
+		list($can_save, $return) = get_oembed_appgame($api_prefix, $ori_url);
 
 		//构造一个特殊的“命令”
 		if (empty($return)) {
